@@ -210,6 +210,40 @@ To prevent any future regression in the birth sequence, an automated headless PT
 - **Case 1**: Confirms default name (`PLAYER`) with Return, skips intro animation, selects Male Human Classic Adventurer (`g`), completes character creation, and confirms active dungeon entry.
 - **Case 2**: Enters custom character name (`Hero`), selects Warrior (`a`), autorolls stats, and verifies clean world transition.
 
+### 4.2 Premature `exit_game_panic()` & Exit 255 Crash on SIGWINCH / Terminal Resize (`main-gcu.c`, `files.c`)
+
+#### Root Cause Analysis
+In a mobile web environment, the virtual terminal geometry dynamically resizes whenever the user rotates their mobile device (portrait <-> landscape), toggles the on-screen 5x10 AdvKeyboard, or scales the browser viewport. Each geometry change triggers `ioctl(TIOCSWINSZ)` in the Python PTY host, causing the Linux kernel to send a `SIGWINCH` (Window Change) signal to the child PTY curses process.
+
+In upstream ToME 2.3.8-ah's curses driver ([`game/src/main-gcu.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c)):
+1. In `Term_xtra_gcu_event()`, the engine enters a blocking `getch()` call waiting for player keystrokes.
+2. When `SIGWINCH` is delivered, the underlying OS `read()` syscall is interrupted, causing `getch()` to return `ERR` (-1) with `errno == EINTR` (Interrupted system call).
+3. The legacy upstream loop attempted to recover via:
+   ```c
+   /* Mega-Hack -- allow graceful "suspend" */
+   for (k = 0; (k < 10) && (i == ERR); k++) i = getch();
+   if (i == ERR) exit_game_panic();
+   ```
+   Because all 10 consecutive non-delayed `getch()` calls immediately returned `ERR` before the signal handler settled, the engine assumed the terminal connection was broken or stdin was dead, immediately invoking `exit_game_panic()`.
+4. In [`game/src/files.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/files.c), `exit_game_panic()` wrote an emergency panic save and terminated the game via `quit("panic save succeeded!")`.
+5. In ToME's `quit()`, string messages trigger `exit(255)`.
+6. To our new real-time diagnostics supervisor ([`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py)), exit code 255 was correctly classified as an abnormal exit, popping up the `CrashModal` on the player's screen whenever they rotated their phone or opened the virtual keyboard!
+
+#### C Engine Resolution ([`main-gcu.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c) & [`files.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/files.c))
+We re-architected the curses event loop and panic exit mechanics:
+
+1. **`EINTR` Signal Interruption Recovery ([`main-gcu.c:612-617`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c#L612-L617))**:
+   - The event loop wraps `getch()` in an explicit `while (1)` loop with `errno = 0`.
+   - If `i == ERR && errno == EINTR`, it immediately loops back and retries, cleanly absorbing `SIGWINCH` and window resize interruptions.
+2. **`KEY_RESIZE` Handling ([`main-gcu.c:619-625, 678-684`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c#L619-L625))**:
+   - When ncurses returns `KEY_RESIZE`, the engine dispatches `Term_xtra(TERM_XTRA_REACT, 0)` to recalculate internal geometry without triggering panic logic.
+3. **Genuine Stdin Disconnection Detection via `feof()` ([`main-gcu.c:629-654`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c#L629-L654))**:
+   - Instead of treating every `ERR` as terminal death, it verifies `feof(stdin)`.
+   - For non-EOF transient errors, it introduces a 20-iteration retry with 20ms sleeps (`usleep(20000)`), granting a 400ms stabilization window. Only persistent errors trigger `exit_game_panic()`.
+4. **Clean Rescue Exit Status Code `+0` ([`files.c:6591, 6625`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/files.c#L6591))**:
+   - In `exit_game_panic()`, when no character is generated or when the panic save successfully writes to `<savefile>.pnc`, the engine now invokes `quit("+0")`.
+   - The `+` prefix signals `quit()` to exit with status code `0` (clean rescue exit), preventing the diagnostics supervisor from misclassifying emergency saves as fatal application crashes.
+
 ---
 
 ## 5. Cross-Reference Documentation
