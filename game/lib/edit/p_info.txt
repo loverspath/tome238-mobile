@@ -371,6 +371,28 @@ C:a:O:2:1:1d1
 C:a:O:23:4:1d1
 C:a:G:EXPERIMENTAL
 
+C:a:N:Adventurer
+C:a:D:The versatile adventurer, combining the powers of alchemy, thaumaturgy, and runecraft.
+C:a:k:+1000:+100:Magic
+C:a:k:+2000:+800:Alchemy
+C:a:k:+2000:+800:Thaumaturgy
+C:a:k:+2000:+800:Runecraft
+C:a:k:+1000:+500:Mana
+C:a:k:+0:+300:Combat
+C:a:k:+0:+300:Weaponmastery
+C:a:k:+0:+200:Magic-Device
+C:a:O:23:4:1d1
+C:a:O:31:1:1d1
+C:a:O:4:2:6d1
+C:a:O:2:1:6d1
+C:a:O:104:5:1d1
+C:a:O:104:1:1d1
+C:a:O:104:4:1d1
+C:a:O:105:1:1d1
+C:a:O:105:2:1d1
+C:a:O:105:3:1d1
+C:a:O:111:50:1d1
+
 C:N:2:Archer
 C:D:0:'Kill them before they see you' could be the motto of the archer class.
 C:D:0:As deadly with a bow as a warrior is with a sword.
@@ -801,6 +823,55 @@ C:a:k:+1000:+300:Mindcraft
 C:a:k:+0:+200:Sneakiness
 C:a:k:+0:+100:Magic-Device
 
+###############################ADVENTURER###############################
+C:N:6:Adventurer
+C:D:0:A versatile jack-of-all-trades skilled in Alchemy, Thaumaturgy, and Runecraft.
+C:D:1:Wanderer
+C:D:1:Explorer
+C:D:1:Adventurer
+C:D:1:Master Adventurer
+C:D:1:Hero
+C:D:1:Champion
+C:D:1:Lord
+C:S:0:2:1:1:1:1:35:0
+C:K:15:15:10:2:12:12:15:15
+C:X:0:0:0:0:0:0:0:0
+C:B:4:40:2
+C:C:L:L:200000:1:5
+C:P:0:20
+C:E:0:0:0:0:0:0
+C:k:+2000:+900:Magic
+C:k:+2000:+800:Alchemy
+C:k:+2000:+800:Thaumaturgy
+C:k:+2000:+800:Runecraft
+C:k:+1000:+700:Mana
+C:k:+1000:+500:Combat
+C:k:+1000:+500:Weaponmastery
+C:k:+1000:+400:Magic-Device
+C:k:+1000:+500:Sneakiness
+C:b:1:Perfect casting
+C:g:All Gods
+
+C:a:N:Adventurer
+C:a:D:The versatile adventurer, combining the powers of alchemy, thaumaturgy, and runecraft.
+C:a:k:+1000:+100:Magic
+C:a:k:+2000:+800:Alchemy
+C:a:k:+2000:+800:Thaumaturgy
+C:a:k:+2000:+800:Runecraft
+C:a:k:+1000:+500:Mana
+C:a:O:23:4:1d1
+C:a:O:31:1:1d1
+C:a:O:4:2:6d1
+C:a:O:2:1:6d1
+C:a:O:104:5:1d1
+C:a:O:104:1:1d1
+C:a:O:104:4:1d1
+C:a:O:105:1:1d1
+C:a:O:105:2:1d1
+C:a:O:105:3:1d1
+C:a:O:111:50:1d1
+###############################ADVENTURER###############################
+
 ###############################TEST###############################
 C:N:30:Test
 C:D:0:Simple testers.
@@ -877,7 +948,7 @@ R:K:0:0:0:0:0:10:0:0
 R:P:10:100:0:1
 R:M:14:6:72:6:180:25:66:4:150:20
 R:E:1:1:1:2:1:1
-R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster
+R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster | Adventurer
 
 R:N:1:Half-Elf
 R:D:A crossbreed of elf and human, they get the best of the two races.
@@ -886,7 +957,7 @@ R:K:2:3:3:1:6:11:-1:5
 R:P:9:110:2:4
 R:M:24:16:66:6:130:15:62:6:100:10
 R:E:1:1:1:2:1:1
-R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster
+R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster | Adventurer
 R:G:ELF
 R:k:+200:+000:Disarming
 R:k:+300:+000:Magic-Device
@@ -907,7 +978,7 @@ R:M:75:75:60:4:100:6:54:4:80:6
 R:E:1:1:1:2:1:1
 R:R:1:0
 R:F:RES_LITE | 
-R:C:Warrior | Archer | Mage | Priest | Loremaster
+R:C:Warrior | Archer | Mage | Priest | Loremaster | Adventurer
 R:G:ELF
 R:k:+500:+000:Disarming
 R:k:+600:+000:Magic-Device
@@ -929,7 +1000,7 @@ R:Z:create food
 R:G:RESIST_BLACK_BREATH | XTRA_MIGHT_SLING |
 R:R:1:0
 R:F:SUST_DEX | 
-R:C:Warrior | Archer | Mage | Rogue | Loremaster
+R:C:Warrior | Archer | Mage | Rogue | Loremaster | Adventurer
 R:k:+0:+300:Sling-mastery
 R:k:+1500:+000:Disarming
 R:k:+1800:+000:Magic-Device
@@ -950,7 +1021,7 @@ R:E:1:1:1:2:1:1
 R:Z:blink
 R:R:1:0
 R:F:FREE_ACT | 
-R:C:Warrior | Mage | Rogue
+R:C:Warrior | Mage | Rogue | Adventurer
 R:k:+1000:+000:Disarming
 R:k:+1200:+000:Magic-Device
 R:k:+6000:+000:Spirituality
@@ -970,7 +1041,7 @@ R:E:1:1:1:2:1:1
 R:Z:find secret passages
 R:R:1:0
 R:F:RES_BLIND | 
-R:C:Warrior | Priest
+R:C:Warrior | Priest | Adventurer
 R:k:+0:+200:Axe-mastery
 R:k:+200:+000:Disarming
 R:k:+900:+000:Magic-Device
@@ -1953,6 +2024,7 @@ M:C:Rogue
 M:C:Mage
 M:C:Priest
 M:C:Loremaster
+M:C:Adventurer
 #M:C:Test
 #M:C:Chaos-Warrior
 

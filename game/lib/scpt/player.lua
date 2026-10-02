@@ -63,6 +63,13 @@ function __birth_hook_objects()
 		inven_carry(obj, FALSE)
 		end_object(obj)
 	end
+	if get_class_name() == "Adventurer" then
+		local obj = create_object(TV_BOOK, 255);
+		obj.pval = find_spell("Manathrust")
+		obj.ident = bor(obj.ident, IDENT_MENTAL, IDENT_KNOWN)
+		inven_carry(obj, FALSE)
+		end_object(obj)
+	end
 
 	-- Start the undeads, as undeads with the corruptions
 	if get_subrace_name() == "Vampire" then
