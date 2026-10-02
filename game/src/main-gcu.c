@@ -752,25 +752,34 @@ static errr Term_xtra_gcu_event(int v)
  */
 static errr Term_xtra_gcu_react(void)
 {
+	term_data *td = (term_data *)(Term ? Term->data : NULL);
 
 #ifdef A_COLOR
 
 	int i;
 
-	/* Cannot handle color redefinition */
-	if (!can_fix_color) return (0);
-
-	/* Set the colors */
-	for (i = 0; i < 16; i++)
+	/* Handle color redefinition if supported */
+	if (can_fix_color)
 	{
-		/* Set one color (note scaling) */
-		init_color(i,
-		           angband_color_table[i][1] * 1000 / 255,
-		           angband_color_table[i][2] * 1000 / 255,
-		           angband_color_table[i][3] * 1000 / 255);
+		for (i = 0; i < 16; i++)
+		{
+			/* Set one color (note scaling) */
+			init_color(i,
+			           angband_color_table[i][1] * 1000 / 255,
+			           angband_color_table[i][2] * 1000 / 255,
+			           angband_color_table[i][3] * 1000 / 255);
+		}
 	}
 
 #endif
+
+	/* Force Curses full window refresh and clear physical screen cache to wipe ghost artifacts */
+	if (td && td->win)
+	{
+		clearok(curscr, TRUE);
+		touchwin(td->win);
+		wrefresh(td->win);
+	}
 
 	/* Success */
 	return (0);

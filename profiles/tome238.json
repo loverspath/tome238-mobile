@@ -18,6 +18,7 @@
     "cols": 80,
     "rows": 24
   },
+  "fixed_geometry": true,
   "redraw_key": "\u0012",
   "keyboard_config": "keyboards.json",
   "context_rules": [

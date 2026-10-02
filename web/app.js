@@ -67,6 +67,7 @@
   const elIndLock = document.getElementById('ind-lock');
   const elIndRun = document.getElementById('ind-run');
   const elBtnQuickSettings = document.getElementById('btn-quick-settings');
+  const elBtnRedraw = document.getElementById('btn-redraw');
   const elBtnRestart = document.getElementById('btn-restart');
   const elKeyboardPanel = document.getElementById('keyboard-panel');
   const elFloatingDpad = document.getElementById('floating-dpad');
@@ -148,9 +149,11 @@
       cols: defaultCols,
       rows: defaultRows,
       cursorBlink: false,
-      fontFamily: '"DejaVu Sans Mono", "Courier New", monospace',
+      fontFamily: '"DejaVu Sans Mono", "Courier New", "Liberation Mono", monospace',
       fontSize: 13,
       lineHeight: 1.15,
+      letterSpacing: 0,
+      windowsPty: false,
       theme: {
         background: '#000000',
         foreground: '#ffffff',
@@ -195,22 +198,41 @@
     window.addEventListener('resize', () => {
       adjustTerminalScale();
       renderKeyboard();
+      triggerAutoRedraw(150);
     });
     window.addEventListener('orientationchange', () => {
       setTimeout(() => {
         adjustTerminalScale();
         renderKeyboard();
+        triggerAutoRedraw(150);
       }, 150);
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        adjustTerminalScale();
+        triggerAutoRedraw(80);
+      }
     });
 
     adjustTerminalScale();
   }
 
+  let autoRedrawTimer = null;
+  function triggerAutoRedraw(delay = 120) {
+    if (autoRedrawTimer) clearTimeout(autoRedrawTimer);
+    autoRedrawTimer = setTimeout(() => {
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        sendRaw('\x12'); // Ctrl+R full redraw
+      }
+    }, delay);
+  }
+
   /**
-   * Precise 80x24 Viewport Auto-Fitter with Fit Width & Fit Height support
+   * Precise 80x24 Viewport Auto-Fitter with Fit Width & Fit Height support.
+   * Strictly clamps geometry to 80x24 for ToME to prevent tile shifts and wrapping corruption.
    */
   function adjustTerminalScale() {
-    if (!state.fitAddon || !state.term) return;
+    if (!state.term) return;
 
     const cw = elTerminalWrapper.clientWidth - 2;
     const ch = elTerminalWrapper.clientHeight - 2;
@@ -221,35 +243,51 @@
     const lineHeight = 1.15;
     const targetCols = state.profileMeta?.geometry?.cols || 80;
     const targetRows = state.profileMeta?.geometry?.rows || 24;
+    const isFixedGeometry = state.profileMeta?.fixed_geometry !== false;
 
     let optimalFontSize;
 
     if (state.fitAxis === 'width' || (state.fitAxis === 'auto' && isPortrait)) {
-      // Fit Width: 80 cols must fill width perfectly
+      // Fit Width: targetCols must fill cw perfectly
       optimalFontSize = Math.floor(cw / (targetCols * charAspect));
     } else if (state.fitAxis === 'height' || (state.fitAxis === 'auto' && !isPortrait)) {
-      // Fit Height: 24 rows must fill height perfectly
+      // Fit Height: targetRows must fill ch perfectly
       optimalFontSize = Math.floor(ch / (targetRows * lineHeight));
     } else {
-      optimalFontSize = Math.floor(cw / (targetCols * charAspect));
+      // Both (contain)
+      const byW = Math.floor(cw / (targetCols * charAspect));
+      const byH = Math.floor(ch / (targetRows * lineHeight));
+      optimalFontSize = Math.min(byW, byH);
     }
 
-    optimalFontSize = Math.max(8, Math.min(32, optimalFontSize));
+    optimalFontSize = Math.max(9, Math.min(32, optimalFontSize));
 
     if (state.term.options.fontSize !== optimalFontSize) {
       state.term.options.fontSize = optimalFontSize;
     }
 
-    try {
-      state.fitAddon.fit();
-    } catch (e) {}
+    if (isFixedGeometry) {
+      // Strict 80x24 grid: never allow xterm.js or PTY to diverge from 80x24!
+      if (state.term.cols !== targetCols || state.term.rows !== targetRows) {
+        state.term.resize(targetCols, targetRows);
+      }
+      if (state.lastCols !== targetCols || state.lastRows !== targetRows) {
+        state.lastCols = targetCols;
+        state.lastRows = targetRows;
+        sendJSON({ type: 'resize', cols: targetCols, rows: targetRows });
+      }
+    } else {
+      try {
+        state.fitAddon.fit();
+      } catch (e) {}
 
-    const cols = Math.max(targetCols, state.term.cols || targetCols);
-    const rows = Math.max(targetRows, state.term.rows || targetRows);
-    if (cols !== state.lastCols || rows !== state.lastRows) {
-      state.lastCols = cols;
-      state.lastRows = rows;
-      sendJSON({ type: 'resize', cols, rows });
+      const cols = Math.max(targetCols, state.term.cols || targetCols);
+      const rows = Math.max(targetRows, state.term.rows || targetRows);
+      if (cols !== state.lastCols || rows !== state.lastRows) {
+        state.lastCols = cols;
+        state.lastRows = rows;
+        sendJSON({ type: 'resize', cols, rows });
+      }
     }
   }
 
@@ -271,6 +309,7 @@
       updateStatus('Connected', true);
       sendJSON({ type: 'resize', cols: state.lastCols, rows: state.lastRows });
       adjustTerminalScale();
+      triggerAutoRedraw(120);
     };
 
     ws.onmessage = (event) => {
@@ -1156,6 +1195,13 @@ ${info.stderr || '(empty)'}
   }
 
   function setupControls() {
+    if (elBtnRedraw) {
+      elBtnRedraw.addEventListener('click', () => {
+        haptic();
+        sendRaw('\x12'); // Ctrl+R full redraw
+      });
+    }
+
     elBtnRestart.addEventListener('click', () => {
       if (confirm('Restart game session?')) {
         sendJSON({ type: 'restart' });

@@ -115,11 +115,17 @@ class PtySession:
                 pass
 
     def resize(self, cols: int, rows: int):
+        geometry = ACTIVE_PROFILE.get("geometry", {})
+        if ACTIVE_PROFILE.get("fixed_geometry", False):
+            cols = geometry.get("cols", 80)
+            rows = geometry.get("rows", 24)
+
+        size_changed = (cols != self.cols or rows != self.rows)
         self.cols = cols
         self.rows = rows
         if self.master_fd is not None:
             self._set_winsize(cols, rows)
-            if self.child_pid and self.is_alive:
+            if size_changed and self.child_pid and self.is_alive:
                 try:
                     os.kill(self.child_pid, signal.SIGWINCH)
                 except OSError:
