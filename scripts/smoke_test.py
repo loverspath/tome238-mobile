@@ -36,15 +36,9 @@ def run_test(args, inputs=None, timeout=3.0):
     
     output = bytearray()
     start_time = time.time()
-    
-    if inputs:
-        time.sleep(0.5)
-        for inp in inputs:
-            os.write(master, inp)
-            time.sleep(0.2)
-            
+    inputs_sent = False if inputs else True
     while time.time() - start_time < timeout:
-        r, _, _ = select.select([master], [], [], 0.2)
+        r, _, _ = select.select([master], [], [], 0.1)
         if r:
             try:
                 data = os.read(master, 4096)
@@ -53,6 +47,15 @@ def run_test(args, inputs=None, timeout=3.0):
                 output.extend(data)
             except OSError:
                 break
+        
+        if not inputs_sent and (b"Welcome" in output or time.time() - start_time > 0.8):
+            for inp in inputs:
+                try:
+                    os.write(master, inp)
+                except OSError:
+                    pass
+            inputs_sent = True
+
         
     # Check child process status with short poll
     try:
