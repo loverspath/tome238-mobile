@@ -1,23 +1,30 @@
 /* ToME 2.3.8-ah Mobile Web Terminal Stylesheet */
+/* Full 108-Key PC Keyboard & Angbandroid Adaptive Viewport */
 
 :root {
-  --bg-primary: #0e0e12;
-  --bg-secondary: #181820;
-  --bg-tertiary: #242430;
+  --bg-primary: #0a0a0d;
+  --bg-secondary: #14141a;
+  --bg-tertiary: #1f1f28;
   --accent-gold: #e69a28;
   --accent-blue: #3b82f6;
   --accent-red: #ef4444;
   --accent-green: #10b981;
+  --accent-purple: #8b5cf6;
   --fg-main: #f3f4f6;
   --fg-dim: #9ca3af;
+  --fg-sub: #6b7280;
+  --btn-key: #222634;
+  --btn-key-active: #3b4258;
+  --btn-func: #1a1e2b;
+  --btn-mod: #2d3345;
   --btn-cardinal: #282c3c;
   --btn-diag: #1e2230;
-  --btn-action: #232734;
-  --border-color: #2e3446;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --border-color: #2c3244;
+  --border-key: #343c52;
+  --shadow: 0 3px 5px -1px rgba(0, 0, 0, 0.6);
   --top-bar-height: 38px;
-  --ribbon-height: 42px;
-  --kbd-height: 220px;
+  --ribbon-height: 40px;
+  --kbd-height: 44vh;
 }
 
 * {
@@ -216,8 +223,8 @@ html, body {
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
-  padding: 4px 6px;
-  gap: 6px;
+  padding: 3px 6px;
+  gap: 5px;
   overflow: hidden;
   z-index: 50;
   flex-shrink: 0;
@@ -229,7 +236,7 @@ html, body {
   bottom: var(--kbd-height);
   left: 0;
   right: 0;
-  background: rgba(24, 24, 32, 0.88);
+  background: rgba(20, 20, 26, 0.90);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -258,19 +265,19 @@ html, body {
 
 .ribbon-divider {
   width: 1px;
-  height: 22px;
+  height: 20px;
   background-color: var(--border-color);
   margin: 0 2px;
   flex-shrink: 0;
 }
 
 .ribbon-btn {
-  height: 32px;
-  padding: 0 9px;
-  background-color: var(--btn-action);
-  border: 1px solid var(--border-color);
+  height: 30px;
+  padding: 0 8px;
+  background-color: var(--btn-key);
+  border: 1px solid var(--border-key);
   color: var(--fg-main);
-  border-radius: 6px;
+  border-radius: 5px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
@@ -310,14 +317,17 @@ html, body {
 /* --- Virtual Input Controller (Bottom Panel) --- */
 #keyboard-panel {
   display: flex;
+  flex-direction: column;
   height: var(--kbd-height);
-  min-height: var(--kbd-height);
+  min-height: 240px;
+  max-height: 420px;
   background-color: var(--bg-secondary);
-  padding: 6px;
-  gap: 8px;
+  padding: 3px;
+  gap: 3px;
   transition: opacity 0.3s ease, transform 0.3s ease;
   z-index: 50;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* Overlap Mode for Keyboard */
@@ -326,16 +336,16 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(18, 18, 22, 0.88);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
+  background: rgba(16, 16, 22, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.7);
 }
 
 /* Overlap Idle Dimming */
 .overlap-mode.idle-dim #keyboard-panel,
 .overlap-mode.idle-dim #ribbon-bar {
-  opacity: 0.22;
+  opacity: 0.20;
 }
 
 /* Ghost & Hidden states */
@@ -348,26 +358,106 @@ html, body {
   display: none !important;
 }
 
-/* --- Profile 1: Roguelike Default Layout --- */
-.action-grid {
+/* --- 108 PC Keyboard Layer Tab Switcher Bar --- */
+.kbd-layer-tabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: #111116;
+  border-radius: 6px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.layer-tab-btn {
+  flex: 1;
+  height: 26px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--fg-dim);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.layer-tab-btn.active {
+  background: var(--btn-key);
+  border-color: var(--border-key);
+  color: var(--accent-gold);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.layer-tab-btn:active {
+  transform: scale(0.96);
+}
+
+/* --- F-Keys Toolbar (Scrollable F1 ~ F12 + Esc + Edit) --- */
+.fkeys-toolbar {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+  flex-shrink: 0;
+}
+
+.fkeys-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.fkey-btn {
+  height: 28px;
+  padding: 0 8px;
+  background: var(--btn-func);
+  border: 1px solid var(--border-key);
+  color: #93c5fd;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.1s, transform 0.1s;
+}
+
+.fkey-btn:active, .fkey-btn.active {
+  background: var(--accent-blue);
+  color: #fff;
+  transform: scale(0.95);
+}
+
+/* --- Main Layer Body Containers --- */
+.layer-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  overflow: hidden;
 }
 
-.grid-row {
-  display: flex;
-  flex: 1;
-  gap: 4px;
+.layer-body.hidden-layer {
+  display: none !important;
 }
 
-.action-btn {
-  flex: 1;
-  background-color: var(--btn-action);
-  border: 1px solid var(--border-color);
+/* --- PC Key Base Styles --- */
+.pc-key {
+  position: relative;
+  background: var(--btn-key);
+  border: 1px solid var(--border-key);
   color: var(--fg-main);
-  border-radius: 6px;
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -375,104 +465,147 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s, transform 0.1s;
+  box-shadow: var(--shadow);
+  transition: background 0.08s, transform 0.08s, border-color 0.08s;
+  flex: 1;
+  min-width: 0;
 }
 
-.action-btn:active, .action-btn.active {
-  background-color: var(--accent-gold);
+.pc-key .sub-char {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 8px;
+  color: var(--fg-sub);
+  font-weight: 500;
+}
+
+.pc-key:active, .pc-key.active {
+  background: var(--accent-gold);
   color: #000;
-  transform: scale(0.95);
+  transform: scale(0.94);
+  box-shadow: none;
 }
 
-.action-btn.mod-btn.active {
-  background-color: var(--accent-gold);
+.pc-key:active .sub-char, .pc-key.active .sub-char {
+  color: #333;
+}
+
+/* Modifier & Special Key Styles */
+.pc-key.mod-key {
+  background: var(--btn-mod);
+  border-color: #404860;
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pc-key.mod-key.active {
+  background: var(--accent-gold);
   color: #000;
+  border-color: #f59e0b;
 }
 
-.action-btn.run-btn.active {
-  background-color: var(--accent-red);
+.pc-key.run-key.active {
+  background: var(--accent-red);
   color: #fff;
   border-color: #f87171;
 }
 
-/* 3x3 D-Pad */
-.dpad-grid {
-  width: 175px;
-  min-width: 175px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
+.pc-key.enter-key {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #86efac;
+}
+
+.pc-key.esc-key {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.pc-key.space-key {
+  flex: 2.2;
+}
+
+/* Key Rows */
+.pc-key-row {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  width: 100%;
+}
+
+/* Flex sizing weights */
+.flex-1 { flex: 1; }
+.flex-12 { flex: 1.2; }
+.flex-14 { flex: 1.4; }
+.flex-16 { flex: 1.6; }
+.flex-20 { flex: 2.0; }
+
+/* --- 1. QWERTY Layer --- */
+#layer-qwerty .pc-key-row {
+  min-height: 0;
+}
+
+/* --- 2. Fn & Nav Layer --- */
+#layer-fn-nav {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
-.dpad-btn {
-  position: relative;
-  background-color: var(--btn-cardinal);
-  border: 1px solid var(--border-color);
-  color: var(--fg-main);
-  border-radius: 8px;
-  font-size: 18px;
+.fn-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+  flex: 1;
+}
+
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 3px;
+  flex: 0.8;
+}
+
+/* --- 3. Symbols Layer --- */
+#layer-symbols {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.symbol-key {
+  font-size: 16px;
   font-weight: 700;
-  cursor: pointer;
-  touch-action: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow);
-  transition: background 0.1s, transform 0.1s;
+  font-family: monospace;
 }
 
-.dpad-btn .num {
-  position: absolute;
-  bottom: 2px;
-  right: 4px;
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--fg-dim);
-}
-
-.dpad-btn.diag {
-  background-color: var(--btn-diag);
-}
-
-.dpad-btn.center {
-  background-color: var(--bg-tertiary);
-  color: var(--accent-gold);
-}
-
-.dpad-btn:active, .dpad-btn.active {
-  background-color: var(--accent-gold);
-  color: #000;
-  transform: scale(0.95);
-  box-shadow: none;
-}
-
-.dpad-btn:active .num, .dpad-btn.active .num {
-  color: #333;
-}
-
-/* --- Profile 2: Numpad Focused Layout --- */
-.numpad-panel-container {
+/* --- 4. Numpad Full Layer --- */
+#layer-numpad {
   display: flex;
   width: 100%;
   height: 100%;
-  gap: 8px;
+  gap: 6px;
 }
 
-.numpad-left-tools {
-  flex: 0 0 38%;
+.numpad-tools-left {
+  flex: 0 0 35%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
-.numpad-right-keys {
-  flex: 1 1 62%;
+.numpad-keys-right {
+  flex: 1 1 65%;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(4, 1fr);
-  gap: 5px;
+  gap: 4px;
 }
 
 .numpad-key-btn {
@@ -480,8 +613,8 @@ html, body {
   background: #1f2536;
   border: 1px solid #374151;
   color: #f9fafb;
-  border-radius: 8px;
-  font-size: 20px;
+  border-radius: 6px;
+  font-size: 18px;
   font-weight: 800;
   cursor: pointer;
   touch-action: none;
@@ -490,11 +623,11 @@ html, body {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow);
-  transition: background 0.1s, transform 0.1s;
+  transition: background 0.08s, transform 0.08s;
 }
 
 .numpad-key-btn .arrow-sub {
-  font-size: 11px;
+  font-size: 10px;
   color: #9ca3af;
   margin-top: 1px;
 }
@@ -509,29 +642,21 @@ html, body {
   color: #1f2937;
 }
 
-/* --- Profile 3: Minimal Ribbon Additions --- */
+/* --- Profile: Roguelike Default & Minimal --- */
 .profile-minimal #ribbon-bar {
   border-bottom: none;
-  height: 46px;
-  min-height: 46px;
-}
-
-.minimal-dir-btn {
-  background-color: var(--btn-cardinal);
-  border-color: #3b82f6;
-  color: #93c5fd;
-  font-weight: 800;
-  padding: 0 11px;
+  height: 44px;
+  min-height: 44px;
 }
 
 /* --- Portrait Optimizations --- */
 @media (orientation: portrait) {
   :root {
-    --kbd-height: 38vh;
+    --kbd-height: 44vh;
   }
   #keyboard-panel {
-    min-height: 210px;
-    max-height: 310px;
+    min-height: 250px;
+    max-height: 380px;
   }
 }
 
@@ -539,8 +664,8 @@ html, body {
 @media (orientation: landscape) {
   :root {
     --top-bar-height: 30px;
-    --ribbon-height: 34px;
-    --kbd-height: 32vh;
+    --ribbon-height: 32px;
+    --kbd-height: 48vh;
   }
   #top-bar {
     padding: 0 6px;
@@ -556,28 +681,27 @@ html, body {
   .ribbon-btn {
     height: 26px;
     font-size: 11px;
-    padding: 0 7px;
+    padding: 0 6px;
   }
   #keyboard-panel {
-    min-height: 120px;
-    max-height: 175px;
-    padding: 4px;
-    gap: 6px;
+    min-height: 150px;
+    max-height: 230px;
+    padding: 2px;
+    gap: 2px;
   }
-  .dpad-grid {
-    width: 155px;
-    min-width: 155px;
-  }
-  .dpad-btn {
-    font-size: 14px;
-  }
-  .action-btn {
+  .pc-key {
     font-size: 11px;
   }
-  .numpad-key-btn {
-    font-size: 16px;
+  .pc-key .sub-char {
+    font-size: 7px;
   }
-  .numpad-key-btn .arrow-sub {
-    font-size: 9px;
+  .layer-tab-btn {
+    height: 22px;
+    font-size: 10px;
+  }
+  .fkey-btn {
+    height: 22px;
+    font-size: 10px;
+    padding: 0 5px;
   }
 }
