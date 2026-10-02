@@ -244,6 +244,48 @@ We re-architected the curses event loop and panic exit mechanics:
    - In `exit_game_panic()`, when no character is generated or when the panic save successfully writes to `<savefile>.pnc`, the engine now invokes `quit("+0")`.
    - The `+` prefix signals `quit()` to exit with status code `0` (clean rescue exit), preventing the diagnostics supervisor from misclassifying emergency saves as fatal application crashes.
 
+### 4.3 ASCII Tile Corruption & Refresh Synchronization Fix (Fixed 80x24 Geometry, Ncurses Cache Invalidation, Auto Ctrl+R)
+
+#### Root Cause Analysis
+In classic roguelikes like ToME 2.3.8-ah, the dungeon map, sidebar stat panels, and top bars are rigidly formatted around an exact 80-column by 24-row VT100 grid. During mobile play, two subtle rendering defects caused visual degradation and ASCII tile distortion:
+
+1. **Geometry Drift & Column Expansion via `fitAddon`**:
+   - `xterm-addon-fit` dynamically calculates columns and rows based on container pixel dimensions. On wide mobile screens or landscape devices, `fitAddon` expanded the terminal beyond 80 columns (e.g. 84~120 columns).
+   - Because the ToME C curses engine explicitly wraps lines at column 80, the extra terminal columns caused dungeon rows to misalign, wrap prematurely, and shear dungeon corridors diagonally.
+2. **Ncurses Screen Cache Stale State (`curscr`)**:
+   - Ncurses maintains an internal optimization buffer of the physical terminal screen (`curscr`) to minimize bandwidth by emitting diffs.
+   - When the browser viewport was resized, rotated, or when the mobile device woke up from sleep (`visibilitychange`), xterm.js re-rendered from scratch, but ncurses believed the physical screen still held previous character cells.
+   - Consequently, redraw commands omitted unchanged tiles, leaving orphaned ghost glyphs, missing dungeon walls, and fragmented text strings across the viewport.
+
+#### Technical Resolution Across Engine, Shell, and Frontend
+
+1. **Declarative Fixed Geometry Constraint (`"fixed_geometry": true`)**:
+   - In [`profiles/tome238.json`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/tome238.json), we declared `"fixed_geometry": true` alongside `"cols": 80, "rows": 24`.
+   - In [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py), `PtySession.resize()` enforces strict clamping: if `fixed_geometry` is active, it ignores client dimension expansion and pins the PTY slave strictly to 80x24.
+2. **Pure Font-Scale Responsive Fitting Engine ([`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js))**:
+   - Refactored `adjustTerminalScale()`: instead of allowing `fitAddon` to stretch columns, the frontend computes the exact mathematical font size (`fontSize`) that allows 80 columns (Fit Width) or 24 rows (Fit Height) to fill the available screen area.
+   - `state.term.resize(80, 24)` is strictly enforced, guaranteeing zero column shearing or line-wrapping corruption regardless of device aspect ratio.
+   - Configured `letterSpacing: 0` and standard monospace font fallbacks (`DejaVu Sans Mono`, `Liberation Mono`, `Courier New`).
+3. **Ncurses Physical Screen Cache Invalidation ([`game/src/main-gcu.c:Term_xtra_gcu_react()`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c))**:
+   - When screen refresh or geometry recalculation occurs:
+     ```c
+     if (td && td->win)
+     {
+         clearok(curscr, TRUE);
+         touchwin(td->win);
+         wrefresh(td->win);
+     }
+     ```
+   - `clearok(curscr, TRUE)` forces ncurses to completely discard its differential cache and re-emit every character cell for all 80x24 positions during the next `wrefresh()`, completely eliminating ghost tiles.
+4. **Mobile Lifecycle Auto-Redraw Synchronization (`\x12` / `Ctrl+R`)**:
+   - In [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), a debounced `triggerAutoRedraw()` sends `\x12` (`Ctrl+R`) automatically whenever:
+     - The browser window resizes (`resize`, 150ms debounce).
+     - The device orientation changes (`orientationchange`, 150ms debounce).
+     - The user switches back to the browser tab (`visibilitychange -> visible`, 80ms debounce).
+     - A new WebSocket connection is established (`ws.onopen`, 120ms debounce).
+5. **Top Bar Redraw Quick Action Button (`⟳`)**:
+   - Added a dedicated 1-tap screen redraw button (`#btn-redraw`) in [`web/index.html`](file:///data/data/com.termux/files/home/tome238-mobile/web/index.html) and [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), allowing players to manually force a full terminal re-render at any time.
+
 ---
 
 ## 5. Cross-Reference Documentation

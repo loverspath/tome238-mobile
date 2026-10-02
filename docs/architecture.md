@@ -336,17 +336,46 @@ The crash pipeline is covered by an automated integration test ([`scripts/test_c
 
 ---
 
-## 5. Responsiveness & Monospace Scaling
+## 5. Responsiveness, Monospace Scaling & 80x24 Grid Synchronization
 
-ToME 2.3.8-ah requires an exact 80-column by 24-row grid. Partial character clipping breaks alignment of the dungeon map and stats sidebar.
+ToME 2.3.8-ah requires an exact 80-column by 24-row grid. Any drift in column or row dimensions causes text wrapping, hallway shearing, and ASCII tile distortion.
 
-[`adjustTerminalScale()`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js#L88-L115) dynamically computes optimal font sizing based on available viewport dimensions:
-```javascript
-const maxFontW = containerWidth / (80 * 0.62);
-const maxFontH = containerHeight / (24 * 1.18);
-const optimalSize = Math.max(9, Math.floor(Math.min(maxFontW, maxFontH)));
-```
-This guarantees that whether viewed on a compact 5.8-inch smartphone in portrait mode, a 10-inch tablet, or a desktop browser, the 80x24 grid scales to fit with zero horizontal or vertical clipping.
+### 5.1 Strict 80x24 Fixed Grid Scaling
+Unlike standard web terminals where `fitAddon` dynamically stretches the number of columns to fill wide displays, classic roguelikes require a strict fixed geometry:
+- **`"fixed_geometry": true` Profile Constraint**: When enabled in the active profile ([`profiles/tome238.json`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/tome238.json)), the PTY supervisor in [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py) clamps all resize requests strictly to 80x24, preventing the Linux PTY slave from exceeding 80 columns.
+- **Pure Font-Scale Viewport Fitting ([`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js))**:
+  The frontend computes the maximum font size (`fontSize`) that allows the 80x24 grid to fill the available canvas without altering column or row counts:
+  ```javascript
+  if (state.fitAxis === 'width' || (state.fitAxis === 'auto' && isPortrait)) {
+    optimalFontSize = Math.floor(cw / (80 * charAspect));
+  } else if (state.fitAxis === 'height' || (state.fitAxis === 'auto' && !isPortrait)) {
+    optimalFontSize = Math.floor(ch / (24 * lineHeight));
+  }
+  optimalFontSize = Math.max(9, Math.min(32, optimalFontSize));
+  state.term.resize(80, 24);
+  ```
+  This guarantees that whether viewed on a compact 5.8-inch smartphone in portrait mode, a 10-inch tablet, or a desktop browser, the 80x24 grid scales to fit with zero horizontal or vertical clipping, and zero corridor skewing.
+
+### 5.2 Ncurses Screen Cache Invalidation & Automatic Redraw
+- **Physical Screen Cache Flush ([`game/src/main-gcu.c:Term_xtra_gcu_react()`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c))**:
+  When geometry updates or redraws are requested, the curses driver executes:
+  ```c
+  if (td && td->win)
+  {
+      clearok(curscr, TRUE);
+      touchwin(td->win);
+      wrefresh(td->win);
+  }
+  ```
+  `clearok(curscr, TRUE)` forces ncurses to wipe its physical screen memory cache, ensuring a complete byte-for-byte repaint of all 80x24 cells and destroying any orphaned ghost glyphs.
+- **Mobile Lifecycle Auto-Redraw (`\x12` / `Ctrl+R`)**:
+  In [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), debounced triggers automatically send `\x12` (`Ctrl+R`) during critical mobile state transitions:
+  - Browser window resize (`resize`, 150ms debounce)
+  - Device orientation switch (`orientationchange`, 150ms debounce)
+  - App switching / browser tab focus (`visibilitychange -> visible`, 80ms debounce)
+  - WebSocket session connection (`ws.onopen`, 120ms debounce)
+- **Top Bar Redraw Button (`⟳`)**:
+  A dedicated `#btn-redraw` button in [`web/index.html`](file:///data/data/com.termux/files/home/tome238-mobile/web/index.html) gives the player instant 1-tap screen resynchronization at any time.
 
 ---
 
@@ -367,6 +396,7 @@ A profile defines execution environment, metadata, and input adaptations:
   "cwd": "game",
   "env": { "TERM": "xterm-256color", "TOME_PATH": "lib", "LANG": "en_US.UTF-8" },
   "geometry": { "cols": 80, "rows": 24 },
+  "fixed_geometry": true,
   "redraw_key": "\u0012",
   "keyboard_config": "keyboards.json",
   "context_rules": [
