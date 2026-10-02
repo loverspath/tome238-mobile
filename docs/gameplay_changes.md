@@ -18,6 +18,10 @@
 | **Magic Progression** | Inventory-heavy spellbooks or isolated single-discipline casting | TomeNET Dynamic Runecraft + Innate Thaumaturgy + Alchemy | Eliminates deep inventory scrolling for spellbooks; empowers on-the-fly elemental spell tracing. |
 | **Birth & Savefile Stability** | Savefile check prone to NULL stream crash on modern Bionic libc | Bionic FORTIFY NULL checks in `loadsave.c` + automated regression test | Completely prevents `SIGABRT` aborts when confirming default character name on Android Termux. |
 | **Mobile UI & Diagnostics** | None (Raw terminal / OS console only) | 5x10 Neon Cyan AdvKeyboard, Draggable 3x3 D-Pad, Crash Diagnostics Modal | 100% faithful Angbandroid UX plus instant crash reporting and one-click session restart. |
+| **Floating Action Buttons (FAB)** | None (Strict hardware or OS keyboard input) | Draggable Neon Cyan FAB layer with pointer capture & `localStorage` persistence | Enables players to place custom macros and F-keys anywhere on screen with tap vs drag discrimination. |
+| **Action Ribbon Customization** | Static command keys or complex multi-key combinations | Dynamically configurable action ribbon with `➕` addition button and long-press editor | Allows instant 1-tap triggering of user-defined spells, item actions, and macros without keyboard toggles. |
+| **Function Keys & Macro Palette** | Manual ANSI escape sequence entry or PC keyboard F-keys | 2×6 visual F1~F12 grid, `{F1}`~`{F12}` token parser, and quick macro chips | Bridges complex roguelike terminal commands to intuitive touch buttons. |
+| **Keyboard Ergonomics** | Rigid layout with low-utility Redo key on primary row | Dedicated `⎋` Esc keycap replacing `↺` Redo on Row 4 | Instant thumb access to the roguelike cancel/escape action with automatic Shift/page reset. |
 
 ---
 
@@ -308,6 +312,34 @@ In classic roguelikes, `Ctrl+S` (`\x13`, `KTRL('S')`) is the standard in-game co
    - In `PtySession.start()`, right after `pty.openpty()`, explicitly clear `termios.IXON` and `termios.IXOFF` on `slave_fd` before process execution.
 3. **Automated Regression Test (`scripts/test_ctrl_s.py`)**:
    - Added automated headless PTY test that completes character creation into Bree, sends `\x13` (`Ctrl+S`), verifies `Saving game... done.`, checks that the savefile is written into `saves/`, and validates terminal responsiveness with subsequent commands. Integrated into `./test` as test `[6/6]`.
+
+### 4.5 Mobile Touch Interaction Suite: Draggable Floating Buttons, Custom Action Ribbon, F-Key Palette & Ergonomic Esc Keycap
+
+#### Rationale & Mobile UX Objectives
+In desktop ToME, keyboard shortcuts (such as function keys `F1`~`F12`, macros, and `Escape`) provide rapid access to vital combat and recovery maneuvers. On mobile touch screens, requiring players to toggle through multiple keyboard sub-pages or type escape codes in the heat of battle leads to character death. We implemented a unified mobile touch interaction suite:
+
+1. **Draggable Floating Action Buttons (FAB Engine)**:
+   - **On-Screen Canvas Overlay**: Added `#floating-buttons-layer` in [`web/index.html`](file:///data/data/com.termux/files/home/tome238-mobile/web/index.html) and [`web/style.css`](file:///data/data/com.termux/files/home/tome238-mobile/web/style.css) containing translucent dark glass neon cyan pill buttons (`.floating-action-btn`).
+   - **Touch Drag vs Tap Discrimination**: In [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), pointer movements below 6px trigger instant command dispatch (`processAction()`) with haptics. Movements exceeding 6px transition into real-time drag-and-drop with pointer capture, updating coordinates dynamically.
+   - **Viewport Bounds Clamping & Resize Re-centering**: Buttons are clamped to the visible viewport on drag and automatically re-clamped during screen rotation or browser window resizing.
+   - **In-Place Long-Press Configuration**: Holding any floating button for >1000ms launches the Universal Button Editor dialog to adjust its label, bound macro sequence, or delete it.
+   - **Persistence**: Saved to `localStorage` under `tome_floating_buttons` (provisioning default `F1` and `Rest` buttons). New buttons can be added via the Quick Settings menu (`Add Floating Button`).
+
+2. **Action Ribbon Customization & Direct Addition (`➕`)**:
+   - **Dynamic Ribbon Rendering**: The scrolling action ribbon (`#dynamic-ribbon`) is rendered from `state.customRibbon` (persisted under `tome_custom_ribbon`).
+   - **Direct `➕` Addition Button**: Placed at the end of the ribbon bar (`#btn-ribbon-add`), enabling players to tap `➕` and instantly configure a new action button without opening external setting menus.
+   - **Long-Press Editing & Deletion**: Long-pressing (>1000ms) any existing ribbon button opens the editor to change its label, modify its macro string, or delete it.
+   - **One-Tap Factory Reset**: The Quick Settings menu provides `Reset Ribbon Buttons` (`reset-ribbon`) to immediately restore the default 13-action palette.
+
+3. **Universal Button & Macro Editor Dialog (`#keymap-modal`)**:
+   - **Polymorphic Target Architecture**: Unifies the configuration of Virtual Keyboard keycaps, Floating Action Buttons, and Action Ribbon buttons in a single responsive dialog.
+   - **Visual 2×6 F-Key Palette (`.fkey-palette-grid`)**: Provides 12 dedicated buttons for `F1` through `F12`. Tapping an F-key inserts `{F1}` ~ `{F12}` into the action field at the current cursor position and auto-populates the button label.
+   - **Special Key Inserts & Macro Template Chips**: Quick-insert buttons for `\e` (Esc), `\n` (Enter), `\s` (Space), `\t` (Tab), `\b` (Backspace), `*` (Target), and `.` (Wait), alongside 1-tap macro chips (`^S` Save, `^X` Quit, `^R` Redraw, `R&\n` Rest Full, `f*t` Fire Nearest, `m0a` Cast Spell).
+   - **Robust Token Parser (`parseActionString`)**: Resolves `{F1}`~`{F12}` into ANSI VT100/VT220 escape sequences (`\x1bOP` .. `\x1b[24~`), named tokens (`{ESC}`, `{ENTER}`, etc.), control shortcuts (`^S` -> `\x13`), and C-style escape codes (`\n`, `\r`, `\e`, `\t`, `\s`, `\b`).
+
+4. **AdvKeyboard Row 4 Esc (`⎋`) Keycap Ergonomics**:
+   - In [`web/keyboards.json`](file:///data/data/com.termux/files/home/tome238-mobile/web/keyboards.json) (both Page 0 and Page 1), replaced the low-utility Redo key (`↺`) on Row 4 left of `⏎` with the roguelike cancel/escape key (`⎋`).
+   - In [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), pressing `⎋` transmits raw `\x1b`, cancels `Shift` mode, and resets pagination to Page 0, ensuring players can instantly back out of menus or danger.
 
 ---
 

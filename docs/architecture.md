@@ -203,7 +203,7 @@ The on-screen virtual keyboard is driven by declarative JSON layout schemas ([`w
   - **Row 1**: `q w e r t y u i o p` (Top QWERTY row)
   - **Row 2**: `a s d f g h j k l *` (Home row + Roguelike target cursor `*`)
   - **Row 3**: `⇧ z x c v b n m ' ⌫` (Shift, Bottom QWERTY, Inscription quote, Backspace)
-  - **Row 4 (Special Controls)**: `◧ ☰ +/- kmp run . lck ― ↻ ⏎`
+  - **Row 4 (Special Controls)**: `◧ ☰ +/- kmp run . lck ― ⎋ ⏎`
     - `◧` (Opacity): Cycles keyboard transparency (30% -> 50% -> 75% -> 100%).
     - `☰` (Menu): Triggers the in-game Quick Settings modal dialog.
     - `+/-` (Page / Sign): Toggles between Page 0 (Alphanumeric) and Page 1 (Symbols & F-Keys).
@@ -212,7 +212,7 @@ The on-screen virtual keyboard is driven by declarative JSON layout schemas ([`w
     - `.` (Rest): Emits period (`.`) for stationary single-turn rest.
     - `lck` (Caps Lock): Locks uppercase input mode.
     - `―` (Space Bar): Emits space (`0x20`) to confirm prompts or dismiss messages.
-    - `↻` (Repeat / Redo): Emits repeat command (`n` or `0` macro).
+    - `⎋` (Escape): Emits escape (`\x1b`) to cancel prompts, exit menus, and clear target selection; automatically resets Shift mode and pagination.
     - `⏎` (Return / Enter): Emits carriage return (`\r`) to accept choices.
 
 ### 3.3 In-Game Quick Settings & Preferences Modal Hierarchy
@@ -258,6 +258,79 @@ Players can customize any button on the 5x10 AdvKeyboard:
 - **Docked vs Overlap Mode**:
   - `Docked Mode`: Terminal canvas height is constrained to the space above the keyboard (`calc(100vh - var(--kbd-height))`).
   - `Overlap Mode (Default)`: Terminal canvas occupies 100% viewport height (`100vh`), and the translucent keyboard floats directly over the lower portion of the dungeon map. Transparent dark glass styling allows floor tiles and monster markers to remain visible beneath keycaps.
+
+### 3.6 Draggable Floating Action Buttons (FAB) Layer
+Directly adapting the Floating Action Button architecture from Angbandroid (`fab_crud.xml` and [`TermView.java:700-750`](file:///data/data/com.termux/files/home/ref_repos/angbandroid/app/src/main/java/org/rephial/xyangband/TermView.java#L700-L750)), we implement a dedicated touch layer for floating user-defined macros and function keys:
+- **Dedicated DOM Layer (`#floating-buttons-layer`)**:
+  - Positioned absolutely across 100% viewport width and height with `pointer-events: none; z-index: 55;`.
+  - Child action buttons (`.floating-action-btn`) re-enable `pointer-events: auto;`, ensuring clicks and drags do not interfere with underlying terminal gestures unless directly touching a button.
+- **Neon Cyan Styling & Haptics**:
+  - Buttons render with rounded pill geometry (`border-radius: 22px; min-width: 44px; height: 44px; padding: 0 14px;`).
+  - Styled with dark glass backdrop blur (`rgba(16, 26, 36, 0.82)` + `backdrop-filter: blur(10px)`), neon cyan borders (`rgba(0, 255, 255, 0.55)`), and cyan glow box shadows (`box-shadow: 0 0 12px rgba(0, 255, 255, 0.28)`).
+  - Active/pressed states scale down to `0.92` with amplified cyan bloom and trigger haptic pulse via `navigator.vibrate(8)`.
+- **Drag & Drop Engine with Tap Discrimination**:
+  - Handled via unified Pointer Events (`pointerdown`, `pointermove`, `pointerup`, `pointercancel`) with pointer capture (`setPointerCapture(e.pointerId)`).
+  - **Threshold Discrimination (6px)**: Moves below 6px hypotenuse distance (`Math.hypot(dx, dy) <= 6`) are treated as stationary taps. Exceeding 6px transitions into drag mode, updates CSS `left`/`top` coordinates in real time, and cancels the long-press timer.
+  - **Viewport Clamping**: Coordinates are clamped to screen dimensions (`Math.max(0, Math.min(window.innerWidth - width, newX))`), with automatic re-clamping on device orientation or window resize.
+  - **Tap vs Long-Press**:
+    - Short tap: Executes the bound macro string via `processAction(fb.action)` with haptic feedback.
+    - Long-press (>1000ms hold without drag): Cancels drag and launches the Universal Button Editor dialog (`openButtonEditor({ type: 'floating', id: fb.id, isNew: false })`).
+- **Persistence (`localStorage: tome_floating_buttons`)**:
+  - Saved as structured JSON (`[{ id, label, action, left, top }]`).
+  - Default layout provisions quick access to `F1` (`{F1}`) and full rest `Rest` (`R&\n`).
+  - New floating buttons can be added via the Quick Settings menu (`Add Floating Button`).
+
+### 3.7 Dynamic Action Ribbon Customizer & Direct Addition (`➕`)
+The persistent right-side / bottom action ribbon ([`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js)) provides immediate 1-tap touch access to high-frequency commands, completely customizable at runtime:
+- **Default Action Palette**:
+  - Features 13 standard roguelike actions: Rest (`R&\n`), Inventory (`i`), Magic (`m`), Drop (`d`), Look (`l`), Target (`*`), Fire Nearest (`f`), Pickup (`g`), Wield (`w`), Quaff (`q`), Read Scroll (`r`), Use Wand/Staff (`u`), and Dungeon Map (`M`).
+  - Macro commands containing newlines (`\n` or `\\n`) receive distinctive `.macro-btn` styling.
+- **Direct Addition Button (`➕` / `#btn-ribbon-add`)**:
+  - Rendered dynamically at the end of the ribbon list with a cyan accent border (`ribbon-add-btn`).
+  - Tapping `➕` opens the Universal Button Editor in new ribbon button mode (`openButtonEditor({ type: 'ribbon', isNew: true })`), allowing players to insert custom spells, inscriptions, or equipment shortcuts directly from the play screen.
+- **In-Place Long-Press Modification & Deletion**:
+  - Long-pressing any existing ribbon button for >1000ms opens the editor populated with that button's label and action (`openButtonEditor({ type: 'ribbon', index, isNew: false, ... })`).
+  - Players can re-label, update the macro sequence, or delete the button via the modal's `Delete` button (`splice(index, 1)`).
+- **Persistence & Quick Reset (`localStorage: tome_custom_ribbon`)**:
+  - Serialized as JSON (`[{ label, action }]`).
+  - If a player wishes to revert customizations, the Quick Settings menu provides a 1-tap `Reset Ribbon Buttons` action (`reset-ribbon`) restoring the factory defaults.
+
+### 3.8 Universal Button & Macro Editor Dialog (`#keymap-modal`)
+To unify keymap configuration across the virtual keyboard, floating action buttons, and the action ribbon, the legacy `OptionPopup` is expanded into the **Universal Button & Macro Editor**:
+- **Polymorphic Target Handling (`state.editorTarget`)**:
+  - Supports three target types:
+    1. **Keycap Mode (`type: 'key'`)**: Customizes virtual keyboard keys, displaying the trigger key badge and the "Always visible in ghost mode" toggle.
+    2. **Floating Mode (`type: 'floating'`)**: Manages floating action buttons, exposing an editable Button Label field.
+    3. **Ribbon Mode (`type: 'ribbon'`)**: Manages ribbon items with dynamic label and macro sequence bindings.
+- **Visual Function Key Palette (2×6 F1~F12 Grid)**:
+  - Displays a dedicated grid (`.fkey-palette-grid`) of 12 neon cyan buttons for `F1` through `F12`.
+  - Tapping an F-key button inserts the semantic token (e.g. `{F1}` ~ `{F12}`) into the action input at the current cursor position (`selectionStart`).
+  - Automatically auto-populates the button label with the F-key name if the label field is empty.
+- **Special Keys & Control Sequences Palette**:
+  - Quick-insert buttons for non-printable keys: `\e` (Esc), `\n` (Enter), `\s` (Space), `\t` (Tab), `\b` (Backspace), `*` (Target cursor), and `.` (Wait 1 turn).
+- **Roguelike Macro Template Chips (`.macro-palette-grid`)**:
+  - Pre-configured 1-tap macro templates:
+    - `^S` (Save game without quitting)
+    - `^X` (Save & Quit session)
+    - `^R` (Force full curses screen redraw)
+    - `R&\n` (Rest until fully recovered)
+    - `f*t` (Fire ranged weapon at nearest target)
+    - `m0a` (Cast primary spell)
+- **Advanced Token Parser (`parseActionString`)**:
+  - Extends standard input handling with comprehensive tokenization:
+    - **Function Key Mapping**: Resolves `{F1}`~`{F4}` to VT100 ESC O sequences (`\x1bOP` .. `\x1bOS`) and `{F5}`~`{F12}` to VT220 escape sequences (`\x1b[15~`, `\x1b[17~`, `\x1b[18~`, `\x1b[19~`, `\x1b[20~`, `\x1b[21~`, `\x1b[23~`, `\x1b[24~`). Also recognizes raw shorthand `f1`~`f12`.
+    - **Special Named Tokens**: Resolves `{ESC}`, `{ESCAPE}`, `{ENTER}`, `{RET}`, `{RETURN}`, `{TAB}`, `{SPACE}`, `{SPC}`, `{BS}`, `{BACKSPACE}`, `{WAIT}`, `{REST}`, `{TARGET}`, `{REDRAW}`, `{SAVE}`, `{QUIT}`.
+    - **Control Prefixes (`^X`)**: Resolves `^A` through `^Z` into ASCII control codes `0x01` through `0x1A` (`charCodeAt(0) - 64`), such as `^S` (`0x13`), `^X` (`0x18`), and `^R` (`0x12`).
+    - **C-Style Escape Codes**: Resolves `\n` (`\r`), `\r` (`\r`), `\e` (`\x1b`), `\t` (`\t`), `\s` (` `), and `\b` (`\x7f`).
+
+### 3.9 AdvKeyboard Row 4 Esc (`⎋`) Keycap Replacement
+In traditional terminal roguelikes, the `Escape` key (`0x1b`) is the single most vital control for dismissing menus, backing out of spells, cancelling inventory selections, and un-targeting.
+- **Ergonomic Relocation**:
+  - In upstream Angbandroid layouts, the position to the left of `⏎` (Enter) on Row 4 was occupied by a Redo/Repeat key (`↺` / `↻`), which is rarely used in high-lethality situations.
+  - In [`web/keyboards.json`](file:///data/data/com.termux/files/home/tome238-mobile/web/keyboards.json) (both Page 0 and Page 1), this keycap is replaced with `⎋` (Esc).
+- **Frontend Handler ([`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js))**:
+  - Direct tap on `⎋` immediately transmits raw `\x1b` over the WebSocket PTY bridge.
+  - Automatically clears sticky `Shift` modifier state (`exitShiftMode()`) and resets pagination back to Page 0 (`resetPage()`), ensuring the player is instantly returned to the default exploration keyboard after dismissing a menu.
 
 ---
 
