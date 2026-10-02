@@ -1,0 +1,18 @@
+# Build artifacts
+*.o
+*.obj
+*.exe
+game/src/tome
+game/src/tolua
+game/tome
+tolua
+tome
+
+# Saves & Temporary files
+saves/*
+!saves/.gitkeep
+*.bak
+*~
+.DS_Store
+__pycache__/
+*.pyc
