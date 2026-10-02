@@ -1,5 +1,5 @@
 /* ToME 2.3.8-ah Mobile Web Terminal Stylesheet */
-/* Full 108-Key PC Keyboard & Angbandroid Adaptive Viewport */
+/* Faithfully ported from Angbandroid AdvKeyboard.java & AdvButton.java */
 
 :root {
   --bg-primary: #0a0a0d;
@@ -8,23 +8,18 @@
   --accent-gold: #e69a28;
   --accent-blue: #3b82f6;
   --accent-red: #ef4444;
-  --accent-green: #10b981;
-  --accent-purple: #8b5cf6;
+  --accent-green: #86bf36; /* Angbandroid TOGGLED_BG */
+  --btn-default-bg: #3d3b49; /* Angbandroid DEFAULT_BG */
+  --btn-toggled-bg: #86bf36; /* Angbandroid TOGGLED_BG */
+  --btn-keymap-fg: #65fe08;  /* Angbandroid HC_KEYMAP_FG */
   --fg-main: #f3f4f6;
   --fg-dim: #9ca3af;
-  --fg-sub: #6b7280;
-  --btn-key: #222634;
-  --btn-key-active: #3b4258;
-  --btn-func: #1a1e2b;
-  --btn-mod: #2d3345;
-  --btn-cardinal: #282c3c;
-  --btn-diag: #1e2230;
   --border-color: #2c3244;
-  --border-key: #343c52;
-  --shadow: 0 3px 5px -1px rgba(0, 0, 0, 0.6);
+  --border-key: #4f4c5e;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   --top-bar-height: 38px;
   --ribbon-height: 40px;
-  --kbd-height: 44vh;
+  --kbd-height: 48vh;
 }
 
 * {
@@ -117,12 +112,53 @@ html, body {
 
 .status-indicator.connected {
   background-color: rgba(16, 185, 129, 0.2);
-  color: var(--accent-green);
+  color: #10b981;
 }
 
 .status-indicator.disconnected {
   background-color: rgba(239, 68, 68, 0.2);
   color: var(--accent-red);
+}
+
+.status-pill {
+  font-size: 10px;
+  font-family: monospace;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--fg-dim);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.status-pill.mode-upper {
+  background: var(--accent-gold);
+  color: #000;
+  border-color: #f59e0b;
+}
+
+.status-pill.mode-ctrl {
+  background: var(--accent-blue);
+  color: #fff;
+  border-color: #60a5fa;
+}
+
+.status-pill.mode-active {
+  background: var(--btn-toggled-bg);
+  color: #000;
+  border-color: #a3e635;
+}
+
+.status-pill.mode-run {
+  background: var(--accent-red);
+  color: #fff;
+  border-color: #f87171;
+}
+
+.hidden-pill {
+  display: none !important;
 }
 
 .top-btn {
@@ -149,19 +185,6 @@ html, body {
   transform: scale(0.95);
 }
 
-.pill-btn {
-  padding: 0 8px;
-  border-radius: 14px;
-  background: #202434;
-  border-color: #3b4258;
-  color: #60a5fa;
-  font-size: 11px;
-}
-
-.pill-btn:hover {
-  border-color: var(--accent-blue);
-}
-
 .icon-btn {
   padding: 0 6px;
   min-width: 28px;
@@ -179,13 +202,11 @@ html, body {
   align-items: center;
 }
 
-/* Docked Mode Viewport */
 .docked-mode #terminal-wrapper {
   flex: 1 1 auto;
   min-height: 0;
 }
 
-/* Overlap Mode Viewport */
 .overlap-mode #terminal-wrapper {
   position: absolute;
   top: var(--top-bar-height);
@@ -241,10 +262,6 @@ html, body {
   -webkit-backdrop-filter: blur(8px);
 }
 
-.profile-minimal.overlap-mode #ribbon-bar {
-  bottom: 0;
-}
-
 .ribbon-section {
   display: flex;
   align-items: center;
@@ -274,7 +291,7 @@ html, body {
 .ribbon-btn {
   height: 30px;
   padding: 0 8px;
-  background-color: var(--btn-key);
+  background-color: var(--btn-default-bg);
   border: 1px solid var(--border-key);
   color: var(--fg-main);
   border-radius: 5px;
@@ -297,366 +314,312 @@ html, body {
 }
 
 .ribbon-btn.esc-btn {
-  background-color: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.4);
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
   color: #fca5a5;
 }
 
 .ribbon-btn.enter-btn {
-  background-color: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #86efac;
+  background-color: rgba(134, 191, 54, 0.2);
+  border-color: rgba(134, 191, 54, 0.5);
+  color: #bef264;
 }
 
 .ribbon-btn.macro-btn {
-  background-color: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
   color: #93c5fd;
 }
 
-/* --- Virtual Input Controller (Bottom Panel) --- */
+/* --- Virtual Input Controller (Angbandroid AdvKeyboard Native Layout) --- */
 #keyboard-panel {
   display: flex;
   flex-direction: column;
   height: var(--kbd-height);
   min-height: 240px;
-  max-height: 420px;
-  background-color: var(--bg-secondary);
+  max-height: 440px;
+  background-color: #121217;
   padding: 3px;
-  gap: 3px;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  gap: 2px;
+  transition: opacity 0.3s ease;
   z-index: 50;
   flex-shrink: 0;
   overflow: hidden;
 }
 
-/* Overlap Mode for Keyboard */
 .overlap-mode #keyboard-panel {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(16, 16, 22, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(16, 16, 22, 0.90);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.7);
 }
 
-/* Overlap Idle Dimming */
 .overlap-mode.idle-dim #keyboard-panel,
 .overlap-mode.idle-dim #ribbon-bar {
   opacity: 0.20;
 }
 
-/* Ghost & Hidden states */
 #keyboard-panel.ghost {
   opacity: 0.35 !important;
 }
 
-#keyboard-panel.hidden-panel,
-.profile-minimal #keyboard-panel {
+#keyboard-panel.hidden-panel {
   display: none !important;
 }
 
-/* --- 108 PC Keyboard Layer Tab Switcher Bar --- */
-.kbd-layer-tabs {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  background: #111116;
-  border-radius: 6px;
-  padding: 2px;
-  flex-shrink: 0;
-}
-
-.layer-tab-btn {
-  flex: 1;
-  height: 26px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--fg-dim);
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  touch-action: manipulation;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-}
-
-.layer-tab-btn.active {
-  background: var(--btn-key);
-  border-color: var(--border-key);
-  color: var(--accent-gold);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-
-.layer-tab-btn:active {
-  transform: scale(0.96);
-}
-
-/* --- F-Keys Toolbar (Scrollable F1 ~ F12 + Esc + Edit) --- */
-.fkeys-toolbar {
-  display: flex;
-  gap: 3px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 2px 0;
-  flex-shrink: 0;
-}
-
-.fkeys-toolbar::-webkit-scrollbar {
-  display: none;
-}
-
-.fkey-btn {
-  height: 28px;
-  padding: 0 8px;
-  background: var(--btn-func);
-  border: 1px solid var(--border-key);
-  color: #93c5fd;
-  border-radius: 4px;
-  font-size: 11px;
-  font-family: monospace;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-  touch-action: manipulation;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.1s, transform 0.1s;
-}
-
-.fkey-btn:active, .fkey-btn.active {
-  background: var(--accent-blue);
-  color: #fff;
-  transform: scale(0.95);
-}
-
-/* --- Main Layer Body Containers --- */
-.layer-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  overflow: hidden;
-}
-
-.layer-body.hidden-layer {
-  display: none !important;
-}
-
-/* --- PC Key Base Styles --- */
-.pc-key {
-  position: relative;
-  background: var(--btn-key);
-  border: 1px solid var(--border-key);
-  color: var(--fg-main);
-  border-radius: 4px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  touch-action: manipulation;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow);
-  transition: background 0.08s, transform 0.08s, border-color 0.08s;
-  flex: 1;
-  min-width: 0;
-}
-
-.pc-key .sub-char {
-  position: absolute;
-  top: 1px;
-  right: 3px;
-  font-size: 8px;
-  color: var(--fg-sub);
-  font-weight: 500;
-}
-
-.pc-key:active, .pc-key.active {
-  background: var(--accent-gold);
-  color: #000;
-  transform: scale(0.94);
-  box-shadow: none;
-}
-
-.pc-key:active .sub-char, .pc-key.active .sub-char {
-  color: #333;
-}
-
-/* Modifier & Special Key Styles */
-.pc-key.mod-key {
-  background: var(--btn-mod);
-  border-color: #404860;
-  color: #93c5fd;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.pc-key.mod-key.active {
-  background: var(--accent-gold);
-  color: #000;
-  border-color: #f59e0b;
-}
-
-.pc-key.run-key.active {
-  background: var(--accent-red);
-  color: #fff;
-  border-color: #f87171;
-}
-
-.pc-key.enter-key {
-  background: rgba(16, 185, 129, 0.2);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #86efac;
-}
-
-.pc-key.esc-key {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #fca5a5;
-}
-
-.pc-key.space-key {
-  flex: 2.2;
-}
-
-/* Key Rows */
-.pc-key-row {
+/* Row & Button Grid */
+.adv-row {
   display: flex;
   flex: 1;
   gap: 2px;
   width: 100%;
 }
 
-/* Flex sizing weights */
-.flex-1 { flex: 1; }
-.flex-12 { flex: 1.2; }
-.flex-14 { flex: 1.4; }
-.flex-16 { flex: 1.6; }
-.flex-20 { flex: 2.0; }
-
-/* --- 1. QWERTY Layer --- */
-#layer-qwerty .pc-key-row {
-  min-height: 0;
-}
-
-/* --- 2. Fn & Nav Layer --- */
-#layer-fn-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.fn-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 3px;
-  flex: 1;
-}
-
-.nav-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 3px;
-  flex: 0.8;
-}
-
-/* --- 3. Symbols Layer --- */
-#layer-symbols {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 3px;
-}
-
-.symbol-key {
-  font-size: 16px;
-  font-weight: 700;
-  font-family: monospace;
-}
-
-/* --- 4. Numpad Full Layer --- */
-#layer-numpad {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  gap: 6px;
-}
-
-.numpad-tools-left {
-  flex: 0 0 35%;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.numpad-keys-right {
-  flex: 1 1 65%;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 4px;
-}
-
-.numpad-key-btn {
+.adv-btn {
   position: relative;
-  background: #1f2536;
-  border: 1px solid #374151;
-  color: #f9fafb;
-  border-radius: 6px;
-  font-size: 18px;
-  font-weight: 800;
+  background-color: var(--btn-default-bg);
+  border: 1px solid var(--border-key);
+  color: var(--fg-main);
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   touch-action: none;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow);
-  transition: background 0.08s, transform 0.08s;
+  transition: background-color 0.08s, transform 0.08s, color 0.08s;
+  flex: 1;
+  min-width: 0;
 }
 
-.numpad-key-btn .arrow-sub {
-  font-size: 10px;
-  color: #9ca3af;
-  margin-top: 1px;
+.adv-btn:active, .adv-btn.pressed {
+  background-color: var(--btn-toggled-bg) !important;
+  color: #000 !important;
+  transform: scale(0.94);
+  box-shadow: none;
 }
 
-.numpad-key-btn:active, .numpad-key-btn.active {
-  background: var(--accent-gold);
+/* Toggled state for LCK, RUN, KMP */
+.adv-btn.toggled {
+  background-color: var(--btn-toggled-bg);
   color: #000;
-  transform: scale(0.95);
+  border-color: #a3e635;
 }
 
-.numpad-key-btn:active .arrow-sub, .numpad-key-btn.active .arrow-sub {
-  color: #1f2937;
+/* Custom Keymapped Button */
+.adv-btn.has-keymap {
+  color: var(--btn-keymap-fg);
+  border-color: #65fe08;
 }
 
-/* --- Profile: Roguelike Default & Minimal --- */
-.profile-minimal #ribbon-bar {
-  border-bottom: none;
-  height: 44px;
-  min-height: 44px;
+/* Escape & Enter Accents */
+.adv-btn[data-value="⎋"] {
+  background-color: #45242b;
+  color: #fca5a5;
+  border-color: #6b2d39;
+}
+
+.adv-btn[data-value="⏎"] {
+  background-color: #26432b;
+  color: #86efac;
+  border-color: #36603d;
+}
+
+/* Space Bar Accent */
+.adv-btn[data-value="▭"] {
+  flex: 1.5;
+  font-size: 16px;
+}
+
+/* Keymap Mode Highlighting */
+.keymap-mode-active .adv-btn {
+  border-color: #a3e635;
+}
+
+/* --- Angbandroid OptionPopup Modal Dialog --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal-overlay.hidden-modal {
+  display: none !important;
+}
+
+.modal-dialog {
+  background: #1c1c24;
+  border: 1px solid #3b3a4a;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #16161c;
+  border-bottom: 1px solid #2a2936;
+}
+
+.modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.trigger-badge {
+  font-size: 12px;
+  font-family: monospace;
+  font-weight: 700;
+  background: var(--btn-default-bg);
+  border: 1px solid var(--border-key);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fff;
+}
+
+.modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-dim);
+}
+
+.modal-input {
+  width: 100%;
+  height: 38px;
+  background: #111116;
+  border: 1px solid #3b3a4a;
+  border-radius: 6px;
+  color: #fff;
+  padding: 0 10px;
+  font-family: monospace;
+  font-size: 14px;
+  outline: none;
+}
+
+.modal-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.quick-insert-bar {
+  display: flex;
+  gap: 4px;
+}
+
+.quick-insert-btn {
+  flex: 1;
+  height: 28px;
+  background: #252430;
+  border: 1px solid #3d3b4d;
+  color: #93c5fd;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.quick-insert-btn:active {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.modal-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.modal-checkbox-row input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #16161c;
+  border-top: 1px solid #2a2936;
+}
+
+.modal-btn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  touch-action: manipulation;
+}
+
+.btn-primary {
+  background: var(--btn-toggled-bg);
+  color: #000;
+  border-color: #a3e635;
+}
+
+.btn-secondary {
+  background: #2b2a36;
+  border-color: #403e50;
+  color: var(--fg-main);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  margin-right: auto;
 }
 
 /* --- Portrait Optimizations --- */
 @media (orientation: portrait) {
   :root {
-    --kbd-height: 44vh;
+    --kbd-height: 48vh;
   }
   #keyboard-panel {
-    min-height: 250px;
-    max-height: 380px;
+    min-height: 280px;
+    max-height: 440px;
+  }
+  .adv-btn {
+    font-size: 14px;
   }
 }
 
@@ -665,7 +628,7 @@ html, body {
   :root {
     --top-bar-height: 30px;
     --ribbon-height: 32px;
-    --kbd-height: 48vh;
+    --kbd-height: 40vh;
   }
   #top-bar {
     padding: 0 6px;
@@ -685,23 +648,11 @@ html, body {
   }
   #keyboard-panel {
     min-height: 150px;
-    max-height: 230px;
+    max-height: 220px;
     padding: 2px;
     gap: 2px;
   }
-  .pc-key {
-    font-size: 11px;
-  }
-  .pc-key .sub-char {
-    font-size: 7px;
-  }
-  .layer-tab-btn {
-    height: 22px;
-    font-size: 10px;
-  }
-  .fkey-btn {
-    height: 22px;
-    font-size: 10px;
-    padding: 0 5px;
+  .adv-btn {
+    font-size: 12px;
   }
 }

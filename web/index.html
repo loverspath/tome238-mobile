@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ToME 2.3.8-ah Mobile Terminal</title>
+  <title>ToME 2.3.8-ah Mobile Terminal (Angbandroid Edition)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
   <script src="vendor/xterm-addon-fit.js"></script>
 </head>
 <body>
-  <div id="app" class="docked-mode profile-full108">
+  <div id="app" class="docked-mode">
     <!-- Top Bar -->
     <header id="top-bar">
       <div class="brand">
@@ -24,8 +24,12 @@
       </div>
       <div class="status-group">
         <span id="conn-status" class="status-indicator disconnected">Connecting...</span>
-        <!-- Profile Switcher Pill -->
-        <button id="btn-profile" class="top-btn pill-btn" title="Switch Keyboard Profile">⌨ PC 108 Key</button>
+        <!-- Shift/Ctrl Indicator Pill -->
+        <span id="ind-shift" class="status-pill">a-z</span>
+        <!-- Lock Indicator Pill -->
+        <span id="ind-lock" class="status-pill hidden-pill">LCK</span>
+        <!-- Run Indicator Pill -->
+        <span id="ind-run" class="status-pill hidden-pill">RUN</span>
         <!-- Dock / Overlap Mode Toggle -->
         <button id="btn-dock" class="top-btn icon-btn" title="Toggle Dock / Overlap Mode">⇱ Dock</button>
         <!-- Keyboard Opacity Toggle -->
@@ -67,10 +71,42 @@
       </div>
     </nav>
 
-    <!-- Virtual Input Controller (Full 108 PC Keyboard with Layer Tabs) -->
+    <!-- Virtual Input Controller (Angbandroid AdvKeyboard Native Engine) -->
     <section id="keyboard-panel">
-      <!-- Injected by app.js -->
+      <!-- Injected dynamically by app.js based on keyboards.json & state -->
     </section>
+
+    <!-- Angbandroid OptionPopup (Inline Keymap Customization Dialog) -->
+    <div id="keymap-modal" class="modal-overlay hidden-modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <span class="modal-title">⚙ Keymap Editor</span>
+          <span id="keymap-trigger-badge" class="trigger-badge">Key: A</span>
+        </div>
+        <div class="modal-body">
+          <label class="modal-label">Bound Action / Macro Sequence:</label>
+          <input type="text" id="keymap-action-input" class="modal-input" placeholder="e.g. R&\n, m0a, \e, f*t..." autocomplete="off" autocapitalize="none">
+
+          <!-- Quick Insert Bar -->
+          <div class="quick-insert-bar">
+            <button type="button" class="quick-insert-btn" data-insert="\e">⎋ \e (Esc)</button>
+            <button type="button" class="quick-insert-btn" data-insert="\s">␣ \s (Space)</button>
+            <button type="button" class="quick-insert-btn" data-insert="\t">⇥ \t (Tab)</button>
+            <button type="button" class="quick-insert-btn" data-insert="\n">⏎ \n (Enter)</button>
+          </div>
+
+          <label class="modal-checkbox-row">
+            <input type="checkbox" id="keymap-always-visible">
+            <span>Always visible in ghost/translucent mode</span>
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-keymap-clear" class="modal-btn btn-danger">Clear</button>
+          <button type="button" id="btn-keymap-cancel" class="modal-btn btn-secondary">Cancel</button>
+          <button type="button" id="btn-keymap-save" class="modal-btn btn-primary">Save Keymap</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
