@@ -43,6 +43,7 @@ tome238-mobile/
 │   ├── gameplay_changes.md # Fork modifications, Adventurer class spec, Runecraft roadmap
 │   ├── build_guide.md      # Toolchain details, flags, and library dependencies
 │   ├── mobile_keyboard_spec.md # Angbandroid UX analysis & virtual keyboard spec
+│   ├── mobile_ui_ux_plan.md    # Comprehensive Mobile UI/UX Setup Hierarchy & Keyboard/Screen Implementation Plan
 │   ├── tomenet_runecraft_spec.md # TomeNET Runecraft mechanics & formulas archaeology
 │   ├── runecraft_mapping.md # 1:1 semantic mapping of Runecraft into ToME 2.3.8-ah primitives
 │   └── runecraft_vertical_slice_spec.md # Fire/Cold × Bolt/Ball Zero-C prototype Lua spec
@@ -118,6 +119,12 @@ External reference repositories are cloned at `/data/data/com.termux/files/home/
 - **Action Ribbon**: Direct touch access for vital roguelike actions (`Esc`, `Enter`, `Space`, `Tab`, `Rest`, `Inven`, `Magic`, `Look`, `Target`, `Fire`, `Pickup`, `Wield`, `Quaff`, `Read`, `Use`, `Map`).
 - **Modifier Machine**: Sticky toggles for `Shift`, `Ctrl`, and `RUN` (`.` + direction).
 - **Ghost Mode**: 3-state toggle (Opaque -> 30% Ghost Translucent -> Hidden) to free up visual space during exploration.
+
+### Phase 4: Mobile UI/UX Hierarchy, Neon Cyan AdvKeyboard & Floating Controllers (Active)
+- **Visual & Source Audit**: Reverse engineered 8 native Angbandroid screenshots and matching Java sources (`GameActivity.java`, `TermView.java`, `AdvKeyboard.java`, `Preferences.java`, `preferences.xml`, `fab_crud.xml`).
+- **Master Plan Specification**: Authored [`docs/mobile_ui_ux_plan.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/mobile_ui_ux_plan.md) covering the 16-item Quick Settings menu, 3-category Preferences system, 5x10 neon cyan keycap matrix, viewport auto-fit equations (`Fit Width`/`Fit Height`), and draggable 3x3 D-Pad/FAB engine.
+- **Neon Cyan Glassmorphism**: Translucent dark glass keyboard styling with `#00e5ff` cyan text glow and responsive keycaps.
+- **Floating Controls**: 3x3 directional D-pad draggable via center '5' button with `localStorage` offset persistence. Quick Settings context menu triggered via in-game menu key or bottom-left tap.
 
 ---
 
