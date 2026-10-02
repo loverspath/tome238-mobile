@@ -78,6 +78,8 @@ static byte sf_get(void)
 {
 	byte c;
 
+	if (!fff) return 0;
+
 	/* Get a character, decode the value */
 #ifndef BZ_SAVES
 	c = getc(fff) & 0xFF;
@@ -100,6 +102,8 @@ BZ2_bzRead(&bzerr, bzf, &c, 1);
 
 static void sf_put(byte v)
 {
+	if (!fff) return;
+
 #ifndef BZ_SAVES
 	(void)putc((int)v, fff);
 #else
@@ -1258,27 +1262,43 @@ bool load_player(void)
 #endif
 
 		/* Open the file XXX XXX XXX XXX Should use Angband file interface */
-		fff = my_fopen(savefile, "rb");
-/*		fff = fdopen(fd, "r"); */
+#ifdef SAFER_PANICS
+		if (panicload)
+		{
+			fff = my_fopen(panic_fname, "rb");
+		}
+		else
+#endif
+		{
+			fff = my_fopen(savefile, "rb");
+		}
 
 		/* Drop permission */
 		if (savefile_setuid) safe_setuid_drop();
 
+		if (!fff)
+		{
+			err = -1;
+			what = "Cannot open savefile";
+		}
+		else
+		{
 #ifdef BZ_SAVES
-		bz_prep(LS_LOAD);
+			bz_prep(LS_LOAD);
 #endif /* BZ_SAVES */
 
-		/* Read the first four bytes */
-		do_u32b(&vernum, LS_LOAD);
-		do_byte(&sf_extra, LS_LOAD);
+			/* Read the first four bytes */
+			do_u32b(&vernum, LS_LOAD);
+			do_byte(&sf_extra, LS_LOAD);
 
 #ifdef BZ_SAVES
-		bz_done(LS_LOAD);
+			bz_done(LS_LOAD);
 #endif /* BZ_SAVES */
 
-		/* XXX XXX XXX XXX Should use Angband file interface */
-		my_fclose(fff);
-		/* fclose(fff) */
+			/* XXX XXX XXX XXX Should use Angband file interface */
+			my_fclose(fff);
+			fff = NULL;
+		}
 
 		/* Close the file */
 		fd_close(fd);

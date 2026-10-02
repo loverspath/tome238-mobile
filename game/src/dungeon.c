@@ -5590,10 +5590,13 @@ void play_game(bool new_game)
 	no_begin_screen = FALSE;
 
 	/* Attempt to load */
-	if (!load_player())
+	if (!new_game)
 	{
-		/* Oops */
-		quit("broken savefile");
+		if (!load_player())
+		{
+			/* Oops */
+			quit("broken savefile");
+		}
 	}
 
 	/* Nothing loaded */
