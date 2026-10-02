@@ -16,9 +16,12 @@ All operations can be executed from the project root (`/data/data/com.termux/fil
 | **Run CLI (Local)** | [`./scripts/run.sh`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/run.sh) or `./run` | Launches game directly in local Termux terminal via curses (`main-gcu.c`). |
 | **Run Web Server** | [`./scripts/run_web.sh [PORT]`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/run_web.sh) or `./run_web` | Spawns Python async PTY-WebSocket bridge server (default port: `8080`). |
 | **Restart Web Server** | [`./restart [PORT]`](file:///data/data/com.termux/files/home/tome238-mobile/restart) | Gracefully terminates existing servers, restarts daemon in background, and verifies HTTP 200 OK. |
-| **Run All Tests** | [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) | Runs both CLI smoke test and Web integration test suites sequentially. |
+| **Run All Tests** | [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) | Runs full 5-stage test suite: Native CLI smoke test, Character creation birth test, Web integration test, Decoupled portability test, and Crash pipeline test. |
 | **Engine Smoke Test** | [`./scripts/test.sh`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test.sh) | Headless PTY test ([`scripts/smoke_test.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/smoke_test.py)) validating `--help`, module loading, and clean exit. |
+| **Birth Regression Test**| [`python3 scripts/test_birth.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_birth.py) | Headless PTY test validating character creation flow (default 'PLAYER' + Adventurer, and custom 'Hero' + Warrior) entering dungeon without Bionic abort. |
 | **Web Integration Test** | `python3 scripts/test_web.py` | Automated test suite validating HTTP endpoints, WebSocket handshake, PTY spawning, output streaming, and keystroke echo. |
+| **Portability Test**     | `python3 scripts/test_portability.py` | Proves generic terminal shell decoupling using standalone C demo without ToME dependencies. |
+| **Crash Pipeline Test**  | `python3 scripts/test_crash_pipeline.py` | Asserts PTY abnormal exit detection, 4KB stderr capture, and structured WebSocket `crash` event dispatch. |
 
 ---
 
@@ -32,15 +35,15 @@ tome238-mobile/
 ├── run                     # Convenience shim -> scripts/run.sh
 ├── run_web                 # Convenience shim -> scripts/run_web.sh
 ├── restart                 # Daemon manager & restart script
-├── test                    # Convenience test runner -> scripts/test.sh + scripts/test_web.py
+├── test                    # Master test runner (executes all 5 test suites sequentially)
 ├── profiles/               # Declarative game and application profiles (JSON)
 │   ├── tome238.json        # Official ToME 2.3.8-ah profile
 │   └── portability_demo.json # Standalone C portability proof profile
 ├── docs/                   # Architectural, design, and gameplay specifications
-│   ├── architecture.md     # Full system architecture (PTY bridge, ring buffer, Web UI)
+│   ├── architecture.md     # Full system architecture (PTY bridge, ring buffer, Web UI, Crash Diagnostics)
 │   ├── decoupling_checkpoint.md # Decoupling audit & generic shell architecture checkpoint
 │   ├── multiprocess_feasibility.md # Local multiprocess (TomeNET server+client) feasibility analysis
-│   ├── gameplay_changes.md # Fork modifications, Adventurer class spec, Runecraft roadmap
+│   ├── gameplay_changes.md # Fork modifications, Adventurer class spec, Runecraft roadmap, FORTIFY fix
 │   ├── build_guide.md      # Toolchain details, flags, and library dependencies
 │   ├── mobile_keyboard_spec.md # Angbandroid UX analysis & virtual keyboard spec
 │   ├── mobile_ui_ux_plan.md    # Comprehensive Mobile UI/UX Setup Hierarchy & Keyboard/Screen Implementation Plan
@@ -68,6 +71,14 @@ tome238-mobile/
 │   └── vendor/             # Bundled offline xterm.js (4.19.0) and fit addon
 ├── saves/                  # Persistent player savefiles (separated from source tree)
 └── scripts/                # Automation and validation scripts
+    ├── build.sh            # Engine build script
+    ├── run.sh              # Local curses launcher
+    ├── run_web.sh          # Web daemon launcher
+    ├── smoke_test.py       # PTY banner and clean exit smoke test
+    ├── test_birth.py       # Character creation & birth sequence regression test
+    ├── test_web.py         # Web endpoints & WebSocket streaming test
+    ├── test_portability.py # Decoupled shell portability test
+    └── test_crash_pipeline.py # Crash detection and diagnostic pipeline test
 ```
 
 ---
@@ -120,11 +131,14 @@ External reference repositories are cloned at `/data/data/com.termux/files/home/
 - **Modifier Machine**: Sticky toggles for `Shift`, `Ctrl`, and `RUN` (`.` + direction).
 - **Ghost Mode**: 3-state toggle (Opaque -> 30% Ghost Translucent -> Hidden) to free up visual space during exploration.
 
-### Phase 4: Mobile UI/UX Hierarchy, Neon Cyan AdvKeyboard & Floating Controllers (Active)
+### Phase 4: Mobile UI/UX Hierarchy, Neon Cyan AdvKeyboard & Diagnostics (Active)
 - **Visual & Source Audit**: Reverse engineered 8 native Angbandroid screenshots and matching Java sources (`GameActivity.java`, `TermView.java`, `AdvKeyboard.java`, `Preferences.java`, `preferences.xml`, `fab_crud.xml`).
 - **Master Plan Specification**: Authored [`docs/mobile_ui_ux_plan.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/mobile_ui_ux_plan.md) covering the 16-item Quick Settings menu, 3-category Preferences system, 5x10 neon cyan keycap matrix, viewport auto-fit equations (`Fit Width`/`Fit Height`), and draggable 3x3 D-Pad/FAB engine.
 - **Neon Cyan Glassmorphism**: Translucent dark glass keyboard styling with `#00e5ff` cyan text glow and responsive keycaps.
 - **Floating Controls**: 3x3 directional D-pad draggable via center '5' button with `localStorage` offset persistence. Quick Settings context menu triggered via in-game menu key or bottom-left tap.
+- **Bionic FORTIFY Abort Prevention**: Fixed critical crash during character creation birth sequence in [`game/src/loadsave.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/loadsave.c) where `sf_get()` / `getc(NULL)` tripped Android's `_FORTIFY_SOURCE=2` stream bounds assertions (`SIGABRT`). Covered by automated regression test [`scripts/test_birth.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_birth.py).
+- **Real-Time Crash & Error Diagnostics Pipeline**: Implemented supervisor exit analysis in [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py) (`os.waitpid`, `WTERMSIG`, 4KB circular stderr buffer capture, "Caught fatal signal" parsing) broadcasting structured WebSocket `crash` events to the frontend `CrashModal` ([`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js)), supporting one-click formatted clipboard export and session restart. Covered by [`scripts/test_crash_pipeline.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_crash_pipeline.py).
+- **Unified 5-Stage Test Suite**: Integrated all test suites into master runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) (CLI Smoke -> Birth Flow -> Web Integration -> Shell Portability -> Crash Pipeline).
 
 ---
 
@@ -197,7 +211,7 @@ When implementing new features or making adjustments:
 
 1. **Verify Baseline**:
    ```bash
-   ./scripts/test.sh && python3 scripts/test_web.py
+   ./test
    ```
 2. **Make Small, Incremental Edits**:
    - For UI/Touch adjustments: modify [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js) or [`web/style.css`](file:///data/data/com.termux/files/home/tome238-mobile/web/style.css), then refresh browser.

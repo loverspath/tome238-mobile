@@ -16,6 +16,8 @@
 | **Session Resilience** | Quitting terminal terminates process; disconnect leads to SIGHUP | 64KB Circular Ring Buffer with auto-reconnection & `Ctrl+R` | Mobile browser tab closures or cellular switches no longer kill active dungeon runs. |
 | **Class Archetypes** | Rigid specialization (Mages, Sorcerers, Thaumaturgists, Alchemists) | **Adventurer** Generalist Class (Hybrid Caster-Crafter) | Synthesizes Alchemy + Thaumaturgy + Runecraft for book-free, fluid touch gameplay. |
 | **Magic Progression** | Inventory-heavy spellbooks or isolated single-discipline casting | TomeNET Dynamic Runecraft + Innate Thaumaturgy + Alchemy | Eliminates deep inventory scrolling for spellbooks; empowers on-the-fly elemental spell tracing. |
+| **Birth & Savefile Stability** | Savefile check prone to NULL stream crash on modern Bionic libc | Bionic FORTIFY NULL checks in `loadsave.c` + automated regression test | Completely prevents `SIGABRT` aborts when confirming default character name on Android Termux. |
+| **Mobile UI & Diagnostics** | None (Raw terminal / OS console only) | 5x10 Neon Cyan AdvKeyboard, Draggable 3x3 D-Pad, Crash Diagnostics Modal | 100% faithful Angbandroid UX plus instant crash reporting and one-click session restart. |
 
 ---
 
@@ -146,9 +148,74 @@ flowchart TD
 
 ---
 
-## 4. Cross-Reference Documentation
+---
+
+## 4. Engine Stability & Critical Bugfixes
+
+### 4.1 Bionic FORTIFY NULL Pointer Abort in `loadsave.c`
+
+#### Root Cause Analysis
+During character creation in ToME 2.3.8-ah, confirming the default player name (hitting Return on the initial `PLAYER` prompt) triggers the birth routine in [`game/src/birth.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/birth.c), which calls `load_player()` in [`game/src/loadsave.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/loadsave.c) to inspect whether a savefile for that name already exists.
+
+When starting a fresh character, no savefile exists yet. `my_fopen(savefile, "rb")` returns `NULL`.
+In unpatched upstream code:
+1. `fff` was set to `NULL`.
+2. Error handling paths or subsequent stream decode routines invoked `sf_get()` or `sf_put()`.
+3. Inside `sf_get()`, `c = getc(fff)` was executed directly with `fff == NULL`.
+4. On standard desktop glibc or older compilers, passing `NULL` to `getc()` silently fails with `EOF`. However, on **Android Termux ARM64** using **Bionic libc compiled with `_FORTIFY_SOURCE=2`**, the fortified standard I/O implementation (`__getc_chk`, `__putc_chk`) detects passing a `NULL` `FILE*` pointer as an immediate memory/stream corruption violation, raising an assertion failure and aborting the process via `SIGABRT` (signal 6).
+
+This caused an immediate, non-recoverable crash during new character creation whenever a player accepted the default name or started a new run.
+
+#### C Engine Resolution ([`game/src/loadsave.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/loadsave.c))
+We applied strict null-pointer defenses to the serialization functions:
+```c
+/* In sf_get(): guard against NULL file descriptor */
+static byte sf_get(void)
+{
+	byte c;
+	if (!fff) return 0;
+#ifndef BZ_SAVES
+	c = getc(fff) & 0xFF;
+...
+```
+
+```c
+/* In sf_put(): guard against NULL file descriptor */
+static void sf_put(byte v)
+{
+	if (!fff) return;
+#ifndef BZ_SAVES
+	(void)putc((int)v, fff);
+...
+```
+
+```c
+/* In load_player(): safe error handling and guaranteed NULL cleanup */
+fff = my_fopen(savefile, "rb");
+if (!fff)
+{
+	err = -1;
+	what = "Cannot open savefile";
+}
+else
+{
+	...
+	my_fclose(fff);
+	fff = NULL;
+}
+```
+
+#### Automated Birth Flow Regression Test ([`scripts/test_birth.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_birth.py))
+To prevent any future regression in the birth sequence, an automated headless PTY test was created and integrated into `./test`:
+- **Case 1**: Confirms default name (`PLAYER`) with Return, skips intro animation, selects Male Human Classic Adventurer (`g`), completes character creation, and confirms active dungeon entry.
+- **Case 2**: Enters custom character name (`Hero`), selects Warrior (`a`), autorolls stats, and verifies clean world transition.
+
+---
+
+## 5. Cross-Reference Documentation
 
 - **Full Architecture & Transport Specification**: [`docs/architecture.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/architecture.md)
+- **Comprehensive Mobile UI/UX Implementation Plan**: [`docs/mobile_ui_ux_plan.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/mobile_ui_ux_plan.md)
 - **TomeNET Runecraft Detailed Formulas & Rules**: [`docs/tomenet_runecraft_spec.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/tomenet_runecraft_spec.md)
 - **Runecraft ↔ ToME 2.3.8-ah Semantic Mapping Table**: [`docs/runecraft_mapping.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_mapping.md)
 - **Runecraft Vertical Slice Prototype (Lua MVP)**: [`docs/runecraft_vertical_slice_spec.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_vertical_slice_spec.md)
