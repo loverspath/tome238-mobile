@@ -249,3 +249,14 @@ flowchart TD
    - 자주 쓰는 조합(예: `Fire Ball`, `Inertia Bolt`, `Cold Burst`)을 JSON 기반 프리셋으로 터치 리본 핫키에 즉시 등록 가능하도록 연계.
 3. **역풍 경고 인디케이터**:
    - 현재 HP와 예상 실패 역풍 데미지를 실시간 비교하여, 위험 시 버튼 테두리를 붉은색으로 점멸시키는 모바일 전용 시각 보조 제공.
+
+---
+
+## 10. 상호 교차 참조 (Cross References)
+
+- **ToME 2.3.8-ah 룬마법 1:1 의미론 매핑 사양서**: [`docs/runecraft_mapping.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_mapping.md)
+- **게임플레이 변경 및 Adventurer 클래스 명세서**: [`docs/gameplay_changes.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/gameplay_changes.md)
+- **모바일 웹 터미널 전체 아키텍처 명세서**: [`docs/architecture.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/architecture.md)
+- **모바일 가상 키보드 및 UX 사양서**: [`docs/mobile_keyboard_spec.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/mobile_keyboard_spec.md)
+- **에이전트 인수인계 가이드**: [`AGENTS.md`](file:///data/data/com.termux/files/home/tome238-mobile/AGENTS.md)
+

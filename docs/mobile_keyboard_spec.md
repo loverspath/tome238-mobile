@@ -372,3 +372,14 @@ export class ContextRibbonSniffer {
    - Angbandroid의 핵심 강점인 **[QWERTY + 우측 3x3 넘패드 통합]** 구조를 채택하여 세로/가로 모드 모두에서 탁월한 조작감 제공.
 2. **Phase 6 (TomeNET Runecraft 포팅)**:
    - `docs/tomenet_runecraft_spec.md`에서 도출된 6원소 휠 UI를 본 가상 키보드의 특수 모달(`Runecraft Modal`)로 결합하여 원클릭 룬 조합 및 시전 매크로 등록 기능 제공.
+
+---
+
+## 6. 상호 교차 참조 (Cross References)
+
+- **모바일 웹 터미널 전체 아키텍처 명세서**: [`docs/architecture.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/architecture.md)
+- **게임플레이 변경 및 Adventurer 클래스 명세서**: [`docs/gameplay_changes.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/gameplay_changes.md)
+- **TomeNET 룬마법 공식/메커니즘 원본 사양서**: [`docs/tomenet_runecraft_spec.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/tomenet_runecraft_spec.md)
+- **ToME 2.3.8-ah 룬마법 1:1 의미론 매핑 사양서**: [`docs/runecraft_mapping.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_mapping.md)
+- **에이전트 인수인계 가이드**: [`AGENTS.md`](file:///data/data/com.termux/files/home/tome238-mobile/AGENTS.md)
+

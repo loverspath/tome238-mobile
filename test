@@ -1,0 +1,17 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "=========================================="
+echo " Running Full ToME Test Suite"
+echo "=========================================="
+
+echo -e "\n[1/2] Running Native CLI Smoke Test..."
+"$DIR/scripts/test.sh"
+
+echo -e "\n[2/2] Running Web & WebSocket Integration Test..."
+python3 "$DIR/scripts/test_web.py"
+
+echo -e "\n=========================================="
+echo " ALL TESTS PASSED!"
+echo "=========================================="

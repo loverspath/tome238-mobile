@@ -36,3 +36,9 @@ Run automated PTY smoke test:
 ./scripts/test.sh
 ```
 This tests command line argument parsing (`--help`), module selection initialization (`-n`), and clean terminal restoration on exit.
+
+## 6. Cross-References
+- **Full Architecture Specification**: [`docs/architecture.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/architecture.md)
+- **Gameplay Changes & Class Specification**: [`docs/gameplay_changes.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/gameplay_changes.md)
+- **Agent Operational Handbook**: [`AGENTS.md`](file:///data/data/com.termux/files/home/tome238-mobile/AGENTS.md)
+

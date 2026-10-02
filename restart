@@ -1,0 +1,22 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PORT="${1:-8080}"
+
+echo "==> Stopping any running ToME web server on port ${PORT}..."
+pkill -f "web/server.py" 2>/dev/null || true
+pkill -f "game/tome" 2>/dev/null || true
+sleep 1
+
+echo "==> Starting web server on port ${PORT}..."
+nohup python3 -u "$DIR/web/server.py" --port "$PORT" > "$DIR/server.log" 2>&1 &
+sleep 1.2
+
+if curl -sI "http://127.0.0.1:${PORT}" | grep -q "200 OK"; then
+    echo "==> Server restarted successfully!"
+    echo "    Access: http://localhost:${PORT}"
+else
+    echo "==> Error: Server did not respond with 200 OK. Check server.log:"
+    cat "$DIR/server.log" || true
+    exit 1
+fi

@@ -41,9 +41,14 @@ python3 ./scripts/test_web.py
   - Modifiers: `Shift`, `Ctrl`, and `RUN` (`.` + direction).
   - Opacity toggle (`Ghost` mode) for maximum map visibility on small screens.
 
-## Directory Structure
-- `game/`: C source code (`game/src`), assets & Lua data (`game/lib`), and compiled binary (`game/tome`).
-- `web/`: Mobile-friendly web terminal UI, offline vendor assets, and PTY server (`server.py`).
-- `scripts/`: Build, run, web launch, and automated test utilities.
-- `saves/`: Game savefiles.
-- `docs/`: Technical specifications and build documentation.
+## Documentation
+- [AGENTS.md](file:///data/data/com.termux/files/home/tome238-mobile/AGENTS.md): Operational guide, directory layout, reference repos, and legacy refactoring taboos.
+- [docs/architecture.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/architecture.md): Full system architecture, Mermaid diagrams, PTY-WebSocket bridge, and 64KB ring buffer.
+- [docs/gameplay_changes.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/gameplay_changes.md): Fork comparison tracker, Adventurer class spec, and Runecraft integration roadmap.
+- [docs/runecraft_mapping.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_mapping.md): 1:1 semantic mapping of TomeNET Runecraft to ToME 2.3.8-ah primitives.
+- [docs/runecraft_vertical_slice_spec.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_vertical_slice_spec.md): Fire/Cold × Bolt/Ball Zero-C prototype Lua specification.
+- [docs/tomenet_runecraft_spec.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/tomenet_runecraft_spec.md): TomeNET Runecraft rules, formulas, and bitmask specification.
+- [docs/mobile_keyboard_spec.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/mobile_keyboard_spec.md): Angbandroid mobile UX reverse-engineering and touch keyboard specification.
+- [docs/build_guide.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/build_guide.md): Native toolchain, compiler flags, and curses dependencies.
+
+

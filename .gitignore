@@ -16,3 +16,6 @@ saves/*
 .DS_Store
 __pycache__/
 *.pyc
+*.log
+server.log
+game/lib/note/*.nte

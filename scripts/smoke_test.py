@@ -22,6 +22,7 @@ def run_test(args, inputs=None, timeout=3.0):
         os.dup2(slave, 2)
         os.close(slave)
         os.environ['TERM'] = 'xterm-256color'
+        os.environ['ESCDELAY'] = '25'
         
         project_root = "/data/data/com.termux/files/home/tome238-mobile"
         os.environ['TOME_PATH'] = os.path.join(project_root, "game/lib")
@@ -53,16 +54,17 @@ def run_test(args, inputs=None, timeout=3.0):
             except OSError:
                 break
         
-    # Check child process status
+    # Check child process status with short poll
     try:
-        pid_res, status = os.waitpid(pid, os.WNOHANG)
-        if pid_res != 0:
-            os.close(master)
-            return os.waitstatus_to_exitcode(status), bytes(output)
-        else:
-            # Still running after timeout, kill it
-            os.kill(pid, 9)
-            os.waitpid(pid, 0)
+        for _ in range(30):
+            pid_res, status = os.waitpid(pid, os.WNOHANG)
+            if pid_res != 0:
+                os.close(master)
+                return os.waitstatus_to_exitcode(status), bytes(output)
+            time.sleep(0.05)
+        # Still running after timeout, kill it
+        os.kill(pid, 9)
+        os.waitpid(pid, 0)
     except OSError:
         pass
     os.close(master)
