@@ -1583,7 +1583,7 @@ s16b max_corruptions = 0;
 /*
  * Ingame contextual help
  */
-bool option_ingame_help = TRUE;
+bool option_ingame_help = FALSE;
 
 /*
  * Automatizer enabled status

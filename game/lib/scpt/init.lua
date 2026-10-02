@@ -23,6 +23,9 @@ tome_dofile("corrupt.lua")
 -- Add the mkey activations
 tome_dofile("mkeys.lua")
 
+-- Add Runecraft magic engine
+tome_dofile("runecraft.lua")
+
 -- Add the schools of magic
 tome_dofile("spells.lua")
 

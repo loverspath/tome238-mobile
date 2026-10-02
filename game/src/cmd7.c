@@ -6918,6 +6918,7 @@ void do_cmd_runecrafter()
 
 	char ch;
 
+	if (process_hooks(HOOK_MKEY, "(d)", MKEY_RUNE)) return;
 
 	/* Select what to do */
 	while (TRUE)

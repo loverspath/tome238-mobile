@@ -995,7 +995,8 @@ void do_cmd_activate_skill()
 		do_cmd_powermage();
 		break;
 	case MKEY_RUNE:
-		do_cmd_runecrafter();
+		if (!process_hooks(HOOK_MKEY, "(d)", x_idx))
+			do_cmd_runecrafter();
 		break;
 	case MKEY_FORGING:
 		do_cmd_archer();

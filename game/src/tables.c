@@ -1609,7 +1609,7 @@ option_type option_info[] =
 
 #endif /* 0 */
 
-	{ &option_ingame_help, TRUE, 5, 1,
+	{ &option_ingame_help, FALSE, 5, 1,
 	  "ingame_help", "Ingame contextual help" },
 
 	{ &exp_need, FALSE, 5, 2,
