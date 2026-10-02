@@ -16,12 +16,13 @@ All operations can be executed from the project root (`/data/data/com.termux/fil
 | **Run CLI (Local)** | [`./scripts/run.sh`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/run.sh) or `./run` | Launches game directly in local Termux terminal via curses (`main-gcu.c`). |
 | **Run Web Server** | [`./scripts/run_web.sh [PORT]`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/run_web.sh) or `./run_web` | Spawns Python async PTY-WebSocket bridge server (default port: `8080`). |
 | **Restart Web Server** | [`./restart [PORT]`](file:///data/data/com.termux/files/home/tome238-mobile/restart) | Gracefully terminates existing servers, restarts daemon in background, and verifies HTTP 200 OK. |
-| **Run All Tests** | [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) | Runs full 5-stage test suite: Native CLI smoke test, Character creation birth test, Web integration test, Decoupled portability test, and Crash pipeline test. |
+| **Run All Tests** | [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) | Runs full 6-stage test suite: Native CLI smoke test, Character creation birth test, Web integration test, Decoupled portability test, Crash pipeline test, and In-game Ctrl+S save test. |
 | **Engine Smoke Test** | [`./scripts/test.sh`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test.sh) | Headless PTY test ([`scripts/smoke_test.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/smoke_test.py)) validating `--help`, module loading, and clean exit. |
 | **Birth Regression Test**| [`python3 scripts/test_birth.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_birth.py) | Headless PTY test validating character creation flow (default 'PLAYER' + Adventurer, and custom 'Hero' + Warrior) entering dungeon without Bionic abort. |
 | **Web Integration Test** | `python3 scripts/test_web.py` | Automated test suite validating HTTP endpoints, WebSocket handshake, PTY spawning, output streaming, and keystroke echo. |
 | **Portability Test**     | `python3 scripts/test_portability.py` | Proves generic terminal shell decoupling using standalone C demo without ToME dependencies. |
 | **Crash Pipeline Test**  | `python3 scripts/test_crash_pipeline.py` | Asserts PTY abnormal exit detection, 4KB stderr capture, and structured WebSocket `crash` event dispatch. |
+| **Ctrl+S Save Test**     | [`python3 scripts/test_ctrl_s.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_ctrl_s.py) | Headless PTY test validating in-game Ctrl+S save flow, disk persistence, and termios IXON/XOFF flow control bypass. |
 
 ---
 
@@ -35,7 +36,7 @@ tome238-mobile/
 ├── run                     # Convenience shim -> scripts/run.sh
 ├── run_web                 # Convenience shim -> scripts/run_web.sh
 ├── restart                 # Daemon manager & restart script
-├── test                    # Master test runner (executes all 5 test suites sequentially)
+├── test                    # Master test runner (executes all 6 test suites sequentially)
 ├── profiles/               # Declarative game and application profiles (JSON)
 │   ├── tome238.json        # Official ToME 2.3.8-ah profile
 │   └── portability_demo.json # Standalone C portability proof profile
@@ -78,7 +79,8 @@ tome238-mobile/
     ├── test_birth.py       # Character creation & birth sequence regression test
     ├── test_web.py         # Web endpoints & WebSocket streaming test
     ├── test_portability.py # Decoupled shell portability test
-    └── test_crash_pipeline.py # Crash detection and diagnostic pipeline test
+    ├── test_crash_pipeline.py # Crash detection and diagnostic pipeline test
+    └── test_ctrl_s.py      # In-game Ctrl+S save and flow control regression test
 ```
 
 ---
@@ -140,7 +142,8 @@ External reference repositories are cloned at `/data/data/com.termux/files/home/
 - **Real-Time Crash & Error Diagnostics Pipeline**: Implemented supervisor exit analysis in [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py) (`os.waitpid`, `WTERMSIG`, 4KB circular stderr buffer capture, "Caught fatal signal" parsing) broadcasting structured WebSocket `crash` events to the frontend `CrashModal` ([`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js)), supporting one-click formatted clipboard export and session restart. Covered by [`scripts/test_crash_pipeline.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_crash_pipeline.py).
 - **Terminal Resize / SIGWINCH EINTR Panic Resolution**: Fixed defect in [`game/src/main-gcu.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c) and [`game/src/files.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/files.c) where `getch()` returning `ERR` on `SIGWINCH` (`errno == EINTR`) was falsely treated as terminal disconnection, causing premature `exit_game_panic()` and exit 255 crash false alarms during mobile viewport changes and keyboard toggles.
 - **80×24 Fixed Grid Scaling & ASCII Tile Redraw Synchronization**: Resolved rendering artifacts by enforcing `"fixed_geometry": true` profile clamping, pure font-scale viewport fitting (preventing column expansion beyond 80), ncurses physical screen cache invalidation via `clearok(curscr, TRUE)` and `touchwin()` in [`game/src/main-gcu.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c), mobile lifecycle auto-redraw triggers (`\x12` / `Ctrl+R` on resize/orientation/visibility), and top bar `⟳` redraw button.
-- **Unified 5-Stage Test Suite**: Integrated all test suites into master runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) (CLI Smoke -> Birth Flow -> Web Integration -> Shell Portability -> Crash Pipeline).
+- **In-Game Ctrl+S Save Freeze Resolution (Termios IXON/XOFF Bypass)**: Resolved terminal freeze when saving in-game (`Ctrl+S` / `\x13`) by clearing `IXON` and `IXOFF` on the PTY slave in [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py) and flushing curses buffers in [`game/src/main-gcu.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c). Covered by automated regression test [`scripts/test_ctrl_s.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_ctrl_s.py).
+- **Unified 6-Stage Test Suite**: Integrated all test suites into master runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) (CLI Smoke -> Birth Flow -> Web Integration -> Shell Portability -> Crash Pipeline -> Ctrl+S Save).
 
 ---
 
