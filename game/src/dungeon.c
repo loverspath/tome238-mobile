@@ -5594,7 +5594,7 @@ void play_game(bool new_game)
 	{
 		if (!load_player())
 		{
-			/* Oops */
+			fprintf(stderr, "[ENGINE FATAL] %s:%d: Failed to load savefile '%s'!\n", __FILE__, __LINE__, savefile);
 			quit("broken savefile");
 		}
 	}

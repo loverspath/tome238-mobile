@@ -7,12 +7,14 @@ and provides bidirectional terminal streaming over WebSocket.
 
 import argparse
 import asyncio
+import datetime
 import errno
 import fcntl
 import json
 import mimetypes
 import os
 import pty
+import re
 import signal
 import struct
 import sys
@@ -166,13 +168,60 @@ class PtySession:
                 pass
             self.master_fd = None
 
+        exit_code = 0
+        sig_name = None
+        is_crash = False
+
         if self.child_pid:
             try:
-                os.waitpid(self.child_pid, os.WNOHANG)
+                pid_res, status = os.waitpid(self.child_pid, os.WNOHANG)
+                if pid_res == 0:
+                    time.sleep(0.05)
+                    pid_res, status = os.waitpid(self.child_pid, os.WNOHANG)
+
+                if pid_res != 0:
+                    if os.WIFEXITED(status):
+                        exit_code = os.WEXITSTATUS(status)
+                        if exit_code != 0:
+                            is_crash = True
+                    elif os.WIFSIGNALED(status):
+                        sig_num = os.WTERMSIG(status)
+                        exit_code = -sig_num
+                        is_crash = True
+                        try:
+                            sig_name = signal.Signals(sig_num).name
+                        except (ValueError, AttributeError):
+                            sig_name = f"SIG_{sig_num}"
             except OSError:
                 pass
 
-        exit_msg = json.dumps({"type": "exit"}).encode("utf-8")
+        # Capture last up to 4KB of recent PTY / stderr output
+        raw_tail = bytes(self.recent_buffer[-4096:]) if self.recent_buffer else b""
+        stderr_tail = raw_tail.decode("latin1", errors="replace")
+
+        if is_crash and not sig_name and stderr_tail:
+            m = re.search(r"Caught fatal signal (\d+)", stderr_tail)
+            if m:
+                try:
+                    sig_num = int(m.group(1))
+                    sig_name = signal.Signals(sig_num).name
+                except Exception:
+                    pass
+
+        if is_crash:
+            now_iso = datetime.datetime.now().isoformat()
+            crash_payload = {
+                "type": "crash",
+                "code": exit_code,
+                "signal": sig_name or f"Exit {exit_code}",
+                "message": f"Engine process crashed or aborted unexpectedly (Exit code: {exit_code}, Signal: {sig_name or 'none'}).",
+                "stderr": stderr_tail,
+                "timestamp": now_iso
+            }
+            exit_msg = json.dumps(crash_payload, ensure_ascii=False)
+        else:
+            exit_msg = json.dumps({"type": "exit"}, ensure_ascii=False)
+
         for ws in list(self.clients):
             try:
                 asyncio.create_task(ws.send(exit_msg))

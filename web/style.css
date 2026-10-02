@@ -844,3 +844,173 @@ html, body {
     font-size: 13px;
   }
 }
+
+/* --- Crash Diagnostics Modal (High-Contrast Dev Error Dialog) --- */
+.crash-card {
+  background: #121217;
+  color: #e2e8f0;
+  border-radius: 12px;
+  width: 520px;
+  max-width: 95vw;
+  max-height: 85vh;
+  box-shadow: 0 12px 45px rgba(239, 68, 68, 0.45), 0 0 0 1px #ef4444;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: crash-bounce 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes crash-bounce {
+  0% { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.crash-header {
+  background: #25090d;
+  color: #ff4d4f;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.crash-icon {
+  font-size: 20px;
+}
+
+.crash-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ff6b6b;
+  flex: 1;
+  letter-spacing: 0.2px;
+}
+
+.crash-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.crash-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.crash-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.crash-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.crash-badge {
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge-signal {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.badge-code {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.crash-timestamp {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-left: auto;
+  font-family: monospace;
+}
+
+.crash-summary {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.crash-log-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.crash-log-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.crash-log-pre {
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #f87171;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.crash-footer {
+  padding: 12px 18px;
+  background: #16161c;
+  border-top: 1px solid #27272a;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.crash-btn {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.crash-btn.btn-secondary {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.crash-btn.btn-secondary:hover {
+  background: #475569;
+}
+
+.crash-btn.btn-primary {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.crash-btn.btn-primary:hover {
+  background: #b91c1c;
+}

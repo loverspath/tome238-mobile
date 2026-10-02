@@ -96,6 +96,18 @@
   const elBtnKeymapClear = document.getElementById('btn-keymap-clear');
   const elBtnKeymapCancel = document.getElementById('btn-keymap-cancel');
 
+  // Crash Diagnostics Modal
+  const elCrashModal = document.getElementById('crash-modal');
+  const elCrashTitle = document.getElementById('crash-title');
+  const elCrashBadgeSignal = document.getElementById('crash-badge-signal');
+  const elCrashBadgeCode = document.getElementById('crash-badge-code');
+  const elCrashTimestamp = document.getElementById('crash-timestamp');
+  const elCrashSummary = document.getElementById('crash-summary');
+  const elCrashLogContent = document.getElementById('crash-log-content');
+  const elBtnCrashClose = document.getElementById('btn-crash-close');
+  const elBtnCrashCopy = document.getElementById('btn-crash-copy');
+  const elBtnCrashRestart = document.getElementById('btn-crash-restart');
+
   const defaultDynamicRibbonHTML = elDynamicRibbon.innerHTML;
 
   // --- Keymap Persistence ---
@@ -267,6 +279,10 @@
         if (event.data.startsWith('{')) {
           try {
             const msg = JSON.parse(event.data);
+            if (msg.type === 'crash') {
+              showCrashModal(msg);
+              return;
+            }
             if (msg.type === 'exit') {
               state.term.write('\r\n\x1b[33m[Session process exited. Tap ↺ to restart.]\x1b[0m\r\n');
               return;
@@ -278,6 +294,19 @@
       } else {
         const u8 = new Uint8Array(event.data);
         text = new TextDecoder('latin1').decode(u8);
+        if (text.startsWith('{')) {
+          try {
+            const msg = JSON.parse(text);
+            if (msg.type === 'crash') {
+              showCrashModal(msg);
+              return;
+            }
+            if (msg.type === 'exit') {
+              state.term.write('\r\n\x1b[33m[Session process exited. Tap ↺ to restart.]\x1b[0m\r\n');
+              return;
+            }
+          } catch (e) {}
+        }
         state.term.write(u8);
       }
 
@@ -996,6 +1025,93 @@
     });
   }
 
+  // --- Crash Diagnostics Modal Management ---
+  function showCrashModal(crashInfo) {
+    state.lastCrashInfo = crashInfo;
+    if (elCrashBadgeSignal) {
+      elCrashBadgeSignal.textContent = crashInfo.signal || 'CRASH';
+    }
+    if (elCrashBadgeCode) {
+      elCrashBadgeCode.textContent = 'Exit Code: ' + (crashInfo.code !== undefined ? crashInfo.code : '?');
+    }
+    if (elCrashTimestamp) {
+      elCrashTimestamp.textContent = crashInfo.timestamp || new Date().toISOString();
+    }
+    if (elCrashSummary) {
+      elCrashSummary.textContent = crashInfo.message || 'Engine process crashed unexpectedly.';
+    }
+    if (elCrashLogContent) {
+      elCrashLogContent.textContent = crashInfo.stderr || '(No stderr / PTY stream captured)';
+      elCrashLogContent.scrollTop = elCrashLogContent.scrollHeight;
+    }
+    if (elCrashModal) {
+      elCrashModal.classList.remove('hidden-modal');
+    }
+  }
+
+  function closeCrashModal() {
+    if (elCrashModal) {
+      elCrashModal.classList.add('hidden-modal');
+    }
+  }
+
+  function setupCrashModal() {
+    if (elBtnCrashClose) {
+      elBtnCrashClose.addEventListener('click', () => {
+        haptic();
+        closeCrashModal();
+      });
+    }
+    if (elCrashModal) {
+      elCrashModal.addEventListener('click', (e) => {
+        if (e.target === elCrashModal) {
+          closeCrashModal();
+        }
+      });
+    }
+
+    if (elBtnCrashCopy) {
+      elBtnCrashCopy.addEventListener('click', () => {
+        haptic();
+        const info = state.lastCrashInfo || {};
+        const report = `=== TOME 2.3.8-AH CRASH REPORT ===
+Timestamp:  ${info.timestamp || new Date().toISOString()}
+Signal:     ${info.signal || 'None'}
+Exit Code:  ${info.code !== undefined ? info.code : 'Unknown'}
+Message:    ${info.message || 'Engine process crashed'}
+Profile:    ${state.profileMeta?.name || 'Default'} (${state.profileMeta?.id || 'unknown'})
+Executable: ${state.profileMeta?.executable || 'game/tome'}
+User Agent: ${navigator.userAgent}
+Viewport:   ${window.innerWidth}x${window.innerHeight}
+
+--- Captured Terminal / Stderr Stream ---
+${info.stderr || '(empty)'}
+===================================`;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(report).then(() => {
+            const orig = elBtnCrashCopy.textContent;
+            elBtnCrashCopy.textContent = '✓ Copied to Clipboard!';
+            setTimeout(() => { elBtnCrashCopy.textContent = orig; }, 2000);
+          }).catch(() => {
+            prompt('Copy crash report below:', report);
+          });
+        } else {
+          prompt('Copy crash report below:', report);
+        }
+      });
+    }
+
+    if (elBtnCrashRestart) {
+      elBtnCrashRestart.addEventListener('click', () => {
+        haptic();
+        closeCrashModal();
+        if (state.term) state.term.reset();
+        sendJSON({ type: 'restart' });
+      });
+    }
+  }
+
   // --- Declarative Context Sniffer ---
   let contextMode = 'normal';
 
@@ -1089,6 +1205,7 @@
     setupQuickSettings();
     setupPreferences();
     setupOptionPopup();
+    setupCrashModal();
     setupFloatingDpad();
     applyVisibilityStates();
     initTerminal();

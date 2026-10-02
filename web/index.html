@@ -205,6 +205,35 @@
         </div>
       </div>
     </div>
+
+    <!-- Crash Diagnostics Modal (High-Contrast Dev Error Dialog) -->
+    <div id="crash-modal" class="modal-overlay hidden-modal">
+      <div class="crash-card">
+        <div class="crash-header">
+          <span class="crash-icon">🚨</span>
+          <span class="crash-title" id="crash-title">Engine Crash Detected</span>
+          <button type="button" class="crash-close-btn" id="btn-crash-close">✕</button>
+        </div>
+        <div class="crash-body">
+          <div class="crash-meta">
+            <span class="crash-badge badge-signal" id="crash-badge-signal">SIGABRT</span>
+            <span class="crash-badge badge-code" id="crash-badge-code">Exit Code: -6</span>
+            <span class="crash-timestamp" id="crash-timestamp">2026-10-02T12:00:00</span>
+          </div>
+          <div class="crash-summary" id="crash-summary">
+            The game process terminated unexpectedly. Diagnostic output is captured below.
+          </div>
+          <div class="crash-log-container">
+            <div class="crash-log-label">Last Captured Terminal / Stderr Stream:</div>
+            <pre class="crash-log-pre" id="crash-log-content">No diagnostics captured.</pre>
+          </div>
+        </div>
+        <div class="crash-footer">
+          <button type="button" id="btn-crash-copy" class="crash-btn btn-secondary">📋 Copy Diagnostics</button>
+          <button type="button" id="btn-crash-restart" class="crash-btn btn-primary">🔄 Restart Game Session</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

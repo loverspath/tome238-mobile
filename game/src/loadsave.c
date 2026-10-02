@@ -78,7 +78,11 @@ static byte sf_get(void)
 {
 	byte c;
 
-	if (!fff) return 0;
+	if (!fff)
+	{
+		fprintf(stderr, "[ENGINE ERROR] %s:%d: sf_get() called with null savefile pointer!\n", __FILE__, __LINE__);
+		return 0;
+	}
 
 	/* Get a character, decode the value */
 #ifndef BZ_SAVES
@@ -102,7 +106,11 @@ BZ2_bzRead(&bzerr, bzf, &c, 1);
 
 static void sf_put(byte v)
 {
-	if (!fff) return;
+	if (!fff)
+	{
+		fprintf(stderr, "[ENGINE ERROR] %s:%d: sf_put() called with null savefile pointer!\n", __FILE__, __LINE__);
+		return;
+	}
 
 #ifndef BZ_SAVES
 	(void)putc((int)v, fff);
@@ -1278,6 +1286,7 @@ bool load_player(void)
 
 		if (!fff)
 		{
+			fprintf(stderr, "[ENGINE ERROR] %s:%d: Failed to open savefile '%s' for reading!\n", __FILE__, __LINE__, panicload ? panic_fname : savefile);
 			err = -1;
 			what = "Cannot open savefile";
 		}

@@ -7026,9 +7026,14 @@ static void handle_signal_abort(int sig)
 	/* Disable handler */
 	(void)signal(sig, SIG_IGN);
 
+	fprintf(stderr, "[CRITICAL SIGNAL] Caught fatal signal %d (%s) at player position (%d, %d)\n",
+	        sig, strsignal(sig), p_ptr ? p_ptr->px : 0, p_ptr ? p_ptr->py : 0);
 
-	/* Nothing to save, just quit */
-	if (!character_generated || character_saved) quit(NULL);
+	/* Nothing to save, quit with error */
+	if (!character_generated || character_saved)
+	{
+		quit(format("fatal signal %d (%s)", sig, strsignal(sig)));
+	}
 
 
 	/* Clear the bottom line */
