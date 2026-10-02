@@ -1,25 +1,24 @@
 /* ToME 2.3.8-ah Mobile Web Terminal Stylesheet */
-/* Faithfully ported from Angbandroid AdvKeyboard.java & AdvButton.java */
+/* Faithful Reproduction of Angbandroid Mobile UI & Screenshots */
 
 :root {
-  --bg-primary: #0a0a0d;
-  --bg-secondary: #14141a;
-  --bg-tertiary: #1f1f28;
-  --accent-gold: #e69a28;
-  --accent-blue: #3b82f6;
-  --accent-red: #ef4444;
-  --accent-green: #86bf36; /* Angbandroid TOGGLED_BG */
-  --btn-default-bg: #3d3b49; /* Angbandroid DEFAULT_BG */
-  --btn-toggled-bg: #86bf36; /* Angbandroid TOGGLED_BG */
-  --btn-keymap-fg: #65fe08;  /* Angbandroid HC_KEYMAP_FG */
+  --bg-primary: #000000;
+  --bg-secondary: #0e1218;
+  --bg-card: rgba(14, 18, 24, 0.90);
+  --neon-cyan: #00ffff;
+  --neon-glow: 0 0 6px rgba(0, 255, 255, 0.55);
+  --key-border: rgba(255, 255, 255, 0.25);
+  --key-bg: rgba(22, 28, 38, 0.75);
+  --key-active-bg: #00ffff;
+  --key-active-fg: #000000;
   --fg-main: #f3f4f6;
   --fg-dim: #9ca3af;
-  --border-color: #2c3244;
-  --border-key: #4f4c5e;
-  --shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  --accent-gold: #e69a28;
+  --accent-red: #ef4444;
+  --accent-green: #10b981;
   --top-bar-height: 38px;
-  --ribbon-height: 40px;
-  --kbd-height: 48vh;
+  --ribbon-height: 38px;
+  --kbd-height: 38vh;
 }
 
 * {
@@ -60,8 +59,8 @@ html, body {
   align-items: center;
   height: var(--top-bar-height);
   min-height: var(--top-bar-height);
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background-color: #12141a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   padding: 0 8px;
   font-size: 13px;
   z-index: 60;
@@ -84,22 +83,16 @@ html, body {
 
 .brand .version {
   font-size: 10px;
-  background: var(--bg-tertiary);
+  background: #222634;
   color: var(--fg-dim);
-  padding: 2px 4px;
+  padding: 2px 5px;
   border-radius: 4px;
 }
 
 .status-group {
   display: flex;
   align-items: center;
-  gap: 5px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.status-group::-webkit-scrollbar {
-  display: none;
+  gap: 6px;
 }
 
 .status-indicator {
@@ -121,34 +114,34 @@ html, body {
 }
 
 .status-pill {
-  font-size: 10px;
+  font-size: 11px;
   font-family: monospace;
   font-weight: 700;
   padding: 2px 6px;
-  border-radius: 8px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  color: var(--fg-dim);
+  border-radius: 6px;
+  background: #1c2230;
+  border: 1px solid #333d52;
+  color: var(--neon-cyan);
   white-space: nowrap;
-  transition: all 0.15s ease;
 }
 
 .status-pill.mode-upper {
-  background: var(--accent-gold);
+  background: var(--neon-cyan);
   color: #000;
-  border-color: #f59e0b;
+  border-color: #00ffff;
+  box-shadow: var(--neon-glow);
 }
 
 .status-pill.mode-ctrl {
-  background: var(--accent-blue);
+  background: #8b5cf6;
   color: #fff;
-  border-color: #60a5fa;
+  border-color: #a78bfa;
 }
 
 .status-pill.mode-active {
-  background: var(--btn-toggled-bg);
+  background: #10b981;
   color: #000;
-  border-color: #a3e635;
+  border-color: #34d399;
 }
 
 .status-pill.mode-run {
@@ -162,8 +155,8 @@ html, body {
 }
 
 .top-btn {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
+  background: #202432;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--fg-main);
   height: 28px;
   border-radius: 6px;
@@ -176,19 +169,18 @@ html, body {
   font-weight: 600;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  transition: all 0.15s;
 }
 
 .top-btn:active {
-  background: var(--accent-gold);
+  background: var(--neon-cyan);
   color: #000;
   transform: scale(0.95);
 }
 
 .icon-btn {
-  padding: 0 6px;
+  padding: 0 7px;
   min-width: 28px;
-  font-size: 12px;
 }
 
 /* --- Terminal Viewport --- */
@@ -202,11 +194,13 @@ html, body {
   align-items: center;
 }
 
+/* Docked Mode */
 .docked-mode #terminal-wrapper {
   flex: 1 1 auto;
   min-height: 0;
 }
 
+/* Overlap Mode (Screenshots 1, 7, 8 standard) */
 .overlap-mode #terminal-wrapper {
   position: absolute;
   top: var(--top-bar-height);
@@ -227,7 +221,7 @@ html, body {
 }
 
 .xterm {
-  padding: 2px;
+  padding: 0;
   height: 100%;
 }
 
@@ -235,19 +229,89 @@ html, body {
   background-color: #000000 !important;
 }
 
-/* --- Button Ribbon Bar --- */
+/* --- Floating 3x3 D-Pad (Screenshots 1, 7, 8) --- */
+.floating-dpad-container {
+  position: absolute;
+  right: 14px;
+  bottom: calc(var(--kbd-height) + 12px);
+  width: 34vw;
+  max-width: 320px;
+  min-width: 210px;
+  aspect-ratio: 1;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: move;
+}
+
+.dpad-drag-bar {
+  height: 8px;
+  width: 40px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  margin: 0 auto 4px auto;
+  opacity: 0.6;
+}
+
+.dpad-grid-3x3 {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.f-dpad-cell {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.90);
+  font-size: 20px;
+  font-weight: 800;
+  font-family: monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  transition: background-color 0.08s, border-color 0.08s, color 0.08s, transform 0.08s;
+}
+
+.f-dpad-cell:active, .f-dpad-cell.active {
+  background: rgba(0, 255, 255, 0.35) !important;
+  border-color: var(--neon-cyan) !important;
+  color: var(--neon-cyan) !important;
+  box-shadow: var(--neon-glow);
+  transform: scale(0.94);
+}
+
+.f-dpad-center {
+  color: var(--accent-gold);
+  font-size: 24px;
+}
+
+.hidden-dpad {
+  display: none !important;
+}
+
+/* --- Context Ribbon Bar --- */
 #ribbon-bar {
   display: flex;
   align-items: center;
   height: var(--ribbon-height);
   min-height: var(--ribbon-height);
-  background-color: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(18, 22, 30, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   padding: 3px 6px;
   gap: 5px;
   overflow: hidden;
-  z-index: 50;
+  z-index: 40;
   flex-shrink: 0;
   transition: opacity 0.3s ease;
 }
@@ -257,9 +321,6 @@ html, body {
   bottom: var(--kbd-height);
   left: 0;
   right: 0;
-  background: rgba(20, 20, 26, 0.90);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .ribbon-section {
@@ -283,20 +344,20 @@ html, body {
 .ribbon-divider {
   width: 1px;
   height: 20px;
-  background-color: var(--border-color);
+  background-color: rgba(255, 255, 255, 0.2);
   margin: 0 2px;
   flex-shrink: 0;
 }
 
 .ribbon-btn {
-  height: 30px;
+  height: 28px;
   padding: 0 8px;
-  background-color: var(--btn-default-bg);
-  border: 1px solid var(--border-key);
-  color: var(--fg-main);
+  background-color: #222a38;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--neon-cyan);
   border-radius: 5px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
@@ -304,43 +365,51 @@ html, body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 0.1s, transform 0.1s;
+  transition: all 0.1s;
 }
 
 .ribbon-btn:active, .ribbon-btn.active {
-  background-color: var(--accent-gold);
+  background-color: var(--neon-cyan);
   color: #000;
+  box-shadow: var(--neon-glow);
   transform: scale(0.95);
 }
 
 .ribbon-btn.esc-btn {
-  background-color: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.5);
+  background-color: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
   color: #fca5a5;
 }
 
 .ribbon-btn.enter-btn {
-  background-color: rgba(134, 191, 54, 0.2);
-  border-color: rgba(134, 191, 54, 0.5);
-  color: #bef264;
+  background-color: rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.6);
+  color: #86efac;
 }
 
 .ribbon-btn.macro-btn {
-  background-color: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.5);
+  background-color: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.6);
   color: #93c5fd;
 }
 
-/* --- Virtual Input Controller (Angbandroid AdvKeyboard Native Layout) --- */
+.hidden-ribbon {
+  display: none !important;
+}
+
+/* --- Virtual Input Controller (Screenshots 1, 7, 8 Neon Cyan Keyboard) --- */
 #keyboard-panel {
   display: flex;
   flex-direction: column;
   height: var(--kbd-height);
-  min-height: 240px;
-  max-height: 440px;
-  background-color: #121217;
+  min-height: 220px;
+  max-height: 380px;
+  background-color: var(--bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
   padding: 3px;
-  gap: 2px;
+  gap: 3px;
   transition: opacity 0.3s ease;
   z-index: 50;
   flex-shrink: 0;
@@ -352,15 +421,7 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(16, 16, 22, 0.90);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.7);
-}
-
-.overlap-mode.idle-dim #keyboard-panel,
-.overlap-mode.idle-dim #ribbon-bar {
-  opacity: 0.20;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.8);
 }
 
 #keyboard-panel.ghost {
@@ -371,71 +432,54 @@ html, body {
   display: none !important;
 }
 
-/* Row & Button Grid */
+/* Keyboard Row & Keycaps */
 .adv-row {
   display: flex;
   flex: 1;
-  gap: 2px;
+  gap: 3px;
   width: 100%;
 }
 
 .adv-btn {
   position: relative;
-  background-color: var(--btn-default-bg);
-  border: 1px solid var(--border-key);
-  color: var(--fg-main);
-  border-radius: 4px;
+  background-color: var(--key-bg);
+  border: 1px solid var(--key-border);
+  color: var(--neon-cyan);
+  text-shadow: var(--neon-glow);
+  border-radius: 5px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   touch-action: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
   transition: background-color 0.08s, transform 0.08s, color 0.08s;
   flex: 1;
   min-width: 0;
 }
 
 .adv-btn:active, .adv-btn.pressed {
-  background-color: var(--btn-toggled-bg) !important;
-  color: #000 !important;
+  background-color: var(--key-active-bg) !important;
+  color: var(--key-active-fg) !important;
+  text-shadow: none !important;
   transform: scale(0.94);
-  box-shadow: none;
 }
 
-/* Toggled state for LCK, RUN, KMP */
 .adv-btn.toggled {
-  background-color: var(--btn-toggled-bg);
-  color: #000;
-  border-color: #a3e635;
+  background-color: var(--neon-cyan);
+  color: #000000;
+  text-shadow: none;
+  border-color: #ffffff;
+  box-shadow: var(--neon-glow);
 }
 
-/* Custom Keymapped Button */
 .adv-btn.has-keymap {
-  color: var(--btn-keymap-fg);
-  border-color: #65fe08;
-}
-
-/* Escape & Enter Accents */
-.adv-btn[data-value="⎋"] {
-  background-color: #45242b;
-  color: #fca5a5;
-  border-color: #6b2d39;
-}
-
-.adv-btn[data-value="⏎"] {
-  background-color: #26432b;
-  color: #86efac;
-  border-color: #36603d;
-}
-
-/* Space Bar Accent */
-.adv-btn[data-value="▭"] {
-  flex: 1.5;
-  font-size: 16px;
+  color: #a3e635;
+  text-shadow: 0 0 5px rgba(163, 230, 53, 0.6);
+  border-color: #a3e635;
 }
 
 /* Keymap Mode Highlighting */
@@ -443,11 +487,11 @@ html, body {
   border-color: #a3e635;
 }
 
-/* --- Angbandroid OptionPopup Modal Dialog --- */
+/* --- Quick Settings Modal (Screenshots 2 & 3) --- */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.70);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -461,6 +505,141 @@ html, body {
   display: none !important;
 }
 
+.quick-settings-card {
+  background: #ffffff;
+  color: #111116;
+  border-radius: 8px;
+  width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.qs-header {
+  background: #14141a;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 16px 20px;
+  border-bottom: 1px solid #222;
+}
+
+.qs-menu-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.qs-item-btn {
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #222226;
+  cursor: pointer;
+  border-bottom: 1px solid #ececf0;
+  touch-action: manipulation;
+  transition: background 0.1s;
+}
+
+.qs-item-btn:active {
+  background: #e5e5ea;
+}
+
+.qs-item-btn.text-danger {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* --- Preferences Modal (Screenshots 4 & 6) --- */
+.prefs-card {
+  background: #f7f7f9;
+  color: #111116;
+  border-radius: 8px;
+  width: 420px;
+  max-width: 95vw;
+  max-height: 85vh;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.prefs-header {
+  background: #2a181e;
+  color: #ffffff;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prefs-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.prefs-close-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.prefs-scrollable-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.prefs-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9d2950;
+  padding: 14px 18px 4px;
+}
+
+.prefs-item {
+  padding: 12px 18px;
+  border-bottom: 1px solid #e5e5ea;
+}
+
+.prefs-item-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid #e5e5ea;
+  cursor: pointer;
+}
+
+.prefs-item-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #9d2950;
+  cursor: pointer;
+}
+
+.prefs-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a20;
+}
+
+.prefs-subtext {
+  font-size: 12px;
+  color: #666670;
+  margin-top: 2px;
+}
+
+/* --- OptionPopup Keymap Editor Dialog --- */
 .modal-dialog {
   background: #1c1c24;
   border: 1px solid #3b3a4a;
@@ -492,11 +671,11 @@ html, body {
   font-size: 12px;
   font-family: monospace;
   font-weight: 700;
-  background: var(--btn-default-bg);
-  border: 1px solid var(--border-key);
+  background: #252836;
+  border: 1px solid #3c445a;
   padding: 2px 8px;
   border-radius: 4px;
-  color: #fff;
+  color: var(--neon-cyan);
 }
 
 .modal-body {
@@ -526,8 +705,8 @@ html, body {
 }
 
 .modal-input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 0 2px rgba(0, 255, 255, 0.25);
 }
 
 .quick-insert-bar {
@@ -540,7 +719,7 @@ html, body {
   height: 28px;
   background: #252430;
   border: 1px solid #3d3b4d;
-  color: #93c5fd;
+  color: var(--neon-cyan);
   border-radius: 4px;
   font-size: 11px;
   font-family: monospace;
@@ -550,8 +729,8 @@ html, body {
 }
 
 .quick-insert-btn:active {
-  background: var(--accent-blue);
-  color: #fff;
+  background: var(--neon-cyan);
+  color: #000;
 }
 
 .modal-checkbox-row {
@@ -591,9 +770,10 @@ html, body {
 }
 
 .btn-primary {
-  background: var(--btn-toggled-bg);
+  background: var(--neon-cyan);
   color: #000;
-  border-color: #a3e635;
+  border-color: #00ffff;
+  font-weight: 700;
 }
 
 .btn-secondary {
@@ -612,11 +792,14 @@ html, body {
 /* --- Portrait Optimizations --- */
 @media (orientation: portrait) {
   :root {
-    --kbd-height: 48vh;
+    --kbd-height: 38vh;
   }
-  #keyboard-panel {
-    min-height: 280px;
-    max-height: 440px;
+  .floating-dpad-container {
+    width: 36vw;
+    min-width: 220px;
+    max-width: 300px;
+    right: 12px;
+    bottom: calc(var(--kbd-height) + 10px);
   }
   .adv-btn {
     font-size: 14px;
@@ -627,8 +810,8 @@ html, body {
 @media (orientation: landscape) {
   :root {
     --top-bar-height: 30px;
-    --ribbon-height: 32px;
-    --kbd-height: 40vh;
+    --ribbon-height: 30px;
+    --kbd-height: 36vh;
   }
   #top-bar {
     padding: 0 6px;
@@ -642,17 +825,22 @@ html, body {
     padding: 0 5px;
   }
   .ribbon-btn {
-    height: 26px;
-    font-size: 11px;
+    height: 24px;
+    font-size: 10px;
     padding: 0 6px;
   }
   #keyboard-panel {
-    min-height: 150px;
-    max-height: 220px;
-    padding: 2px;
-    gap: 2px;
+    min-height: 140px;
+    max-height: 210px;
+  }
+  .floating-dpad-container {
+    width: 28vw;
+    min-width: 180px;
+    max-width: 260px;
+    right: 16px;
+    bottom: calc(var(--kbd-height) + 8px);
   }
   .adv-btn {
-    font-size: 12px;
+    font-size: 13px;
   }
 }

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ToME 2.3.8-ah Mobile Terminal (Angbandroid Edition)</title>
+  <title>ToME 2.3.8-ah Mobile Terminal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#121214">
+  <meta name="theme-color" content="#0a0a0d">
 
   <!-- Offline Xterm.js bundle -->
   <link rel="stylesheet" href="vendor/xterm.css">
@@ -15,7 +15,7 @@
   <script src="vendor/xterm-addon-fit.js"></script>
 </head>
 <body>
-  <div id="app" class="docked-mode">
+  <div id="app" class="overlap-mode">
     <!-- Top Bar -->
     <header id="top-bar">
       <div class="brand">
@@ -30,10 +30,8 @@
         <span id="ind-lock" class="status-pill hidden-pill">LCK</span>
         <!-- Run Indicator Pill -->
         <span id="ind-run" class="status-pill hidden-pill">RUN</span>
-        <!-- Dock / Overlap Mode Toggle -->
-        <button id="btn-dock" class="top-btn icon-btn" title="Toggle Dock / Overlap Mode">⇱ Dock</button>
-        <!-- Keyboard Opacity Toggle -->
-        <button id="btn-ghost" class="top-btn icon-btn" title="Toggle Keyboard Opacity">◧</button>
+        <!-- Quick Settings Menu Button -->
+        <button id="btn-quick-settings" class="top-btn icon-btn" title="Quick Settings">▤</button>
         <!-- Game Restart -->
         <button id="btn-restart" class="top-btn icon-btn" title="Restart Game">↺</button>
       </div>
@@ -43,6 +41,24 @@
     <main id="terminal-wrapper">
       <div id="terminal"></div>
     </main>
+
+    <!-- Floating 3x3 D-Pad (Draggable Touch Direction Pad from Screenshots 1, 7, 8) -->
+    <div id="floating-dpad" class="floating-dpad-container" title="Drag to move">
+      <div class="dpad-drag-bar"></div>
+      <div class="dpad-grid-3x3">
+        <button type="button" class="f-dpad-cell" data-dir="7">↖</button>
+        <button type="button" class="f-dpad-cell" data-dir="8">↑</button>
+        <button type="button" class="f-dpad-cell" data-dir="9">↗</button>
+
+        <button type="button" class="f-dpad-cell" data-dir="4">←</button>
+        <button type="button" class="f-dpad-cell f-dpad-center" data-dir="5">·</button>
+        <button type="button" class="f-dpad-cell" data-dir="6">→</button>
+
+        <button type="button" class="f-dpad-cell" data-dir="1">↙</button>
+        <button type="button" class="f-dpad-cell" data-dir="2">↓</button>
+        <button type="button" class="f-dpad-cell" data-dir="3">↘</button>
+      </div>
+    </div>
 
     <!-- Context Ribbon -->
     <nav id="ribbon-bar">
@@ -71,12 +87,94 @@
       </div>
     </nav>
 
-    <!-- Virtual Input Controller (Angbandroid AdvKeyboard Native Engine) -->
+    <!-- Virtual Input Controller (5x10 Neon Cyan AdvKeyboard from Screenshots 1, 7, 8) -->
     <section id="keyboard-panel">
-      <!-- Injected dynamically by app.js based on keyboards.json & state -->
+      <!-- Injected dynamically by app.js based on keyboards.json -->
     </section>
 
-    <!-- Angbandroid OptionPopup (Inline Keymap Customization Dialog) -->
+    <!-- Quick Settings Modal (Faithful Reproduction of Screenshots 2 & 3) -->
+    <div id="quick-settings-modal" class="modal-overlay hidden-modal">
+      <div class="quick-settings-card">
+        <div class="qs-header">Quick Settings</div>
+        <div class="qs-menu-list">
+          <button type="button" class="qs-item-btn" data-action="fit-width">Fit Width</button>
+          <button type="button" class="qs-item-btn" data-action="fit-height">Fit Height</button>
+          <button type="button" class="qs-item-btn" data-action="reset-layout">Reset Layout</button>
+          <button type="button" class="qs-item-btn" data-action="add-floating">Add Floating Button</button>
+          <button type="button" class="qs-item-btn" data-action="toggle-dock">Keyboard Position (Dock/Overlap)</button>
+          <button type="button" class="qs-item-btn" data-action="toggle-ribbon">Show Button Ribbon</button>
+          <button type="button" class="qs-item-btn" data-action="reset-dpad">Reset D-Pad Position</button>
+          <button type="button" class="qs-item-btn" data-action="open-preferences">Preferences</button>
+          <button type="button" class="qs-item-btn" data-action="open-profiles">Profiles</button>
+          <button type="button" class="qs-item-btn text-danger" data-action="quit-session">Quit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preferences Modal (Faithful Reproduction of Screenshots 4 & 6) -->
+    <div id="preferences-modal" class="modal-overlay hidden-modal">
+      <div class="prefs-card">
+        <div class="prefs-header">
+          <span class="prefs-title">Preferences</span>
+          <button type="button" class="prefs-close-btn" id="btn-prefs-close">✕</button>
+        </div>
+        <div class="prefs-scrollable-body">
+          <div class="prefs-section-title">Game</div>
+          <div class="prefs-item">
+            <div class="prefs-item-text">
+              <div class="prefs-label">Game Profile</div>
+              <div class="prefs-subtext" id="pref-profile-name">Default</div>
+            </div>
+          </div>
+          <div class="prefs-item">
+            <div class="prefs-item-text">
+              <div class="prefs-label">Selected variant</div>
+              <div class="prefs-subtext" id="pref-variant-name">ToME 2.3.8 ah</div>
+            </div>
+          </div>
+
+          <div class="prefs-section-title">Display</div>
+          <label class="prefs-item-checkbox">
+            <div class="prefs-item-text">
+              <div class="prefs-label">Full screen</div>
+              <div class="prefs-subtext">Enable or disable game in full screen</div>
+            </div>
+            <input type="checkbox" id="pref-fullscreen">
+          </label>
+          <div class="prefs-item">
+            <div class="prefs-item-text">
+              <div class="prefs-label">Orientation</div>
+              <div class="prefs-subtext">Auto / Portrait / Landscape</div>
+            </div>
+          </div>
+
+          <div class="prefs-section-title">Control</div>
+          <label class="prefs-item-checkbox">
+            <div class="prefs-item-text">
+              <div class="prefs-label">Enable Software Input</div>
+              <div class="prefs-subtext">Show onscreen virtual keyboard</div>
+            </div>
+            <input type="checkbox" id="pref-enable-keyboard" checked>
+          </label>
+          <label class="prefs-item-checkbox">
+            <div class="prefs-item-text">
+              <div class="prefs-label">Overlap Input Controls</div>
+              <div class="prefs-subtext">Put the keyboard/ribbon on top of the game view</div>
+            </div>
+            <input type="checkbox" id="pref-overlap" checked>
+          </label>
+          <label class="prefs-item-checkbox">
+            <div class="prefs-item-text">
+              <div class="prefs-label">Enable Floating D-Pad</div>
+              <div class="prefs-subtext">Display 3x3 touch directional pad</div>
+            </div>
+            <input type="checkbox" id="pref-enable-dpad" checked>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- OptionPopup (Inline Keymap Customization Dialog) -->
     <div id="keymap-modal" class="modal-overlay hidden-modal">
       <div class="modal-dialog">
         <div class="modal-header">

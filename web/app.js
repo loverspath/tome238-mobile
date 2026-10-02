@@ -1,13 +1,16 @@
 /**
- * Generic Mobile Web Terminal Client Controller
- * Dynamically binds to declarative profile metadata (/api/profile)
- * and faithfully implements Angbandroid AdvKeyboard system.
+ * ToME 2.3.8-ah Mobile Web Client Controller
+ * Native Angbandroid UI & Proportions Engine:
+ * - 5x10 Neon Cyan AdvKeyboard
+ * - Draggable 3x3 Floating Touch D-Pad with Persistence
+ * - Quick Settings & Preferences Modal Systems (Screenshots 1-8 Replica)
+ * - Declarative Profile-Driven Viewport Auto-Fitter
  */
 
 (function () {
   'use strict';
 
-  // --- Constants & Special Key Codes ---
+  // --- Constants & Key Mappings ---
   const InputUtils = {
     Visibility: '⎘',
     BlackWhite: '◧',
@@ -16,14 +19,15 @@
     Shift: '⇧',
     BackSpace: '⌫',
     Enter: '⏎',
-    Escape: '⎋'
+    Escape: '⎋',
+    Reload: '↺'
   };
 
   const FUNCTION_KEY_ANSI = {
     'F1': '\x1bOP', 'F2': '\x1bOQ', 'F3': '\x1bOR', 'F4': '\x1bOS',
     'F5': '\x1b[15~', 'F6': '\x1b[17~', 'F7': '\x1b[18~', 'F8': '\x1b[19~',
     'F9': '\x1b[20~', 'F10': '\x1b[21~', 'F11': '\x1b[23~', 'F12': '\x1b[24~',
-    'tab': '\t', '⌫': '\x7f', '⏎': '\r', '⎋': '\x1b', '▭': ' '
+    'tab': '\t', '⌫': '\x7f', '⏎': '\r', '⎋': '\x1b', '▭': ' ', '↺': '\x12'
   };
 
   // --- State ---
@@ -33,19 +37,24 @@
     fitAddon: null,
     reconnectTimer: null,
     profileMeta: null,
-    dockMode: localStorage.getItem('tome_dock_mode') || 'docked', // 'docked' | 'overlap'
+    dockMode: localStorage.getItem('tome_dock_mode') || 'overlap', // Default is Overlap per screenshots
+    showRibbon: localStorage.getItem('tome_show_ribbon') !== 'false',
+    showKeyboard: localStorage.getItem('tome_show_keyboard') !== 'false',
+    showDpad: localStorage.getItem('tome_show_dpad') !== 'false',
     keyboardsData: null,
     page: 0,
-    shiftMode: 0, // 0: Lowercase (a-z), 1: Uppercase (A-Z), 2: Control (^A-^Z)
+    shiftMode: 0, // 0: a-z, 1: A-Z, 2: ^A-Z
     locked: false,
     keymapMode: false,
     runningMode: false,
-    opacityMode: 0, // 0: Normal, 1: Ghost/Translucent, 2: Hidden
-    longPressTimer: null,
-    currentLongPressTarget: null,
-    skipNextClick: false,
+    opacityMode: 0, // 0: Normal, 1: Ghost, 2: Hidden
+    fitAxis: 'auto', // 'auto' | 'width' | 'height'
     customKeymaps: {},
     editingTrigger: null,
+    longPressTimer: null,
+    skipNextClick: false,
+    repeatTimer: null,
+    repeatInterval: null,
     lastCols: 80,
     lastRows: 24,
     recentScreenText: ''
@@ -57,22 +66,35 @@
   const elIndShift = document.getElementById('ind-shift');
   const elIndLock = document.getElementById('ind-lock');
   const elIndRun = document.getElementById('ind-run');
-  const elBtnDock = document.getElementById('btn-dock');
-  const elBtnGhost = document.getElementById('btn-ghost');
+  const elBtnQuickSettings = document.getElementById('btn-quick-settings');
   const elBtnRestart = document.getElementById('btn-restart');
   const elKeyboardPanel = document.getElementById('keyboard-panel');
+  const elFloatingDpad = document.getElementById('floating-dpad');
   const elRibbonBar = document.getElementById('ribbon-bar');
   const elDynamicRibbon = document.getElementById('dynamic-ribbon');
   const elTerminalWrapper = document.getElementById('terminal-wrapper');
 
-  // OptionPopup Modal Elements
-  const elModal = document.getElementById('keymap-modal');
-  const elModalBadge = document.getElementById('keymap-trigger-badge');
-  const elModalInput = document.getElementById('keymap-action-input');
-  const elModalCheck = document.getElementById('keymap-always-visible');
-  const elBtnSave = document.getElementById('btn-keymap-save');
-  const elBtnClear = document.getElementById('btn-keymap-clear');
-  const elBtnCancel = document.getElementById('btn-keymap-cancel');
+  // Quick Settings Modal
+  const elQuickSettingsModal = document.getElementById('quick-settings-modal');
+
+  // Preferences Modal
+  const elPreferencesModal = document.getElementById('preferences-modal');
+  const elBtnPrefsClose = document.getElementById('btn-prefs-close');
+  const elPrefProfileName = document.getElementById('pref-profile-name');
+  const elPrefVariantName = document.getElementById('pref-variant-name');
+  const elPrefFullscreen = document.getElementById('pref-fullscreen');
+  const elPrefEnableKeyboard = document.getElementById('pref-enable-keyboard');
+  const elPrefOverlap = document.getElementById('pref-overlap');
+  const elPrefEnableDpad = document.getElementById('pref-enable-dpad');
+
+  // OptionPopup Modal
+  const elKeymapModal = document.getElementById('keymap-modal');
+  const elKeymapBadge = document.getElementById('keymap-trigger-badge');
+  const elKeymapInput = document.getElementById('keymap-action-input');
+  const elKeymapCheck = document.getElementById('keymap-always-visible');
+  const elBtnKeymapSave = document.getElementById('btn-keymap-save');
+  const elBtnKeymapClear = document.getElementById('btn-keymap-clear');
+  const elBtnKeymapCancel = document.getElementById('btn-keymap-cancel');
 
   const defaultDynamicRibbonHTML = elDynamicRibbon.innerHTML;
 
@@ -120,22 +142,22 @@
       theme: {
         background: '#000000',
         foreground: '#ffffff',
-        cursor: '#e69a28',
+        cursor: '#00ffff',
         black: '#000000',
-        red: '#c00000',
-        green: '#008000',
-        yellow: '#c08000',
-        blue: '#0000c0',
-        magenta: '#c000c0',
-        cyan: '#00c0c0',
-        white: '#c0c0c0',
+        red: '#ff4444',
+        green: '#00ff00',
+        yellow: '#ffff00',
+        blue: '#0088ff',
+        magenta: '#ff00ff',
+        cyan: '#00ffff',
+        white: '#ffffff',
         brightBlack: '#606060',
-        brightRed: '#ff0000',
-        brightGreen: '#00ff00',
-        brightYellow: '#ffff00',
-        brightBlue: '#0000ff',
-        brightMagenta: '#ff00ff',
-        brightCyan: '#00ffff',
+        brightRed: '#ff6666',
+        brightGreen: '#66ff66',
+        brightYellow: '#ffff66',
+        brightBlue: '#66b2ff',
+        brightMagenta: '#ff66ff',
+        brightCyan: '#66ffff',
         brightWhite: '#ffffff'
       }
     });
@@ -172,11 +194,14 @@
     adjustTerminalScale();
   }
 
+  /**
+   * Precise 80x24 Viewport Auto-Fitter with Fit Width & Fit Height support
+   */
   function adjustTerminalScale() {
     if (!state.fitAddon || !state.term) return;
 
-    const cw = elTerminalWrapper.clientWidth - 4;
-    const ch = elTerminalWrapper.clientHeight - 4;
+    const cw = elTerminalWrapper.clientWidth - 2;
+    const ch = elTerminalWrapper.clientHeight - 2;
     if (cw <= 0 || ch <= 0) return;
 
     const isPortrait = window.innerHeight > window.innerWidth;
@@ -186,13 +211,18 @@
     const targetRows = state.profileMeta?.geometry?.rows || 24;
 
     let optimalFontSize;
-    if (isPortrait) {
+
+    if (state.fitAxis === 'width' || (state.fitAxis === 'auto' && isPortrait)) {
+      // Fit Width: 80 cols must fill width perfectly
       optimalFontSize = Math.floor(cw / (targetCols * charAspect));
-    } else {
+    } else if (state.fitAxis === 'height' || (state.fitAxis === 'auto' && !isPortrait)) {
+      // Fit Height: 24 rows must fill height perfectly
       optimalFontSize = Math.floor(ch / (targetRows * lineHeight));
+    } else {
+      optimalFontSize = Math.floor(cw / (targetCols * charAspect));
     }
 
-    optimalFontSize = Math.max(8, Math.min(28, optimalFontSize));
+    optimalFontSize = Math.max(8, Math.min(32, optimalFontSize));
 
     if (state.term.options.fontSize !== optimalFontSize) {
       state.term.options.fontSize = optimalFontSize;
@@ -296,7 +326,7 @@
     }
   }
 
-  // --- Input Resolution Engine ---
+  // --- Input Resolution Engine (InputUtils.java) ---
   function parseActionString(txt) {
     const result = [];
     let i = 0;
@@ -337,6 +367,15 @@
     }
 
     sendRaw(parsed);
+  }
+
+  function handleDirection(dir) {
+    haptic();
+    let cmd = dir;
+    if (state.runningMode) {
+      cmd = '.' + dir;
+    }
+    sendRaw(cmd);
   }
 
   // --- Angbandroid AdvKeyboard Native Engine ---
@@ -494,7 +533,12 @@
     }
 
     if (defaultValue === InputUtils.Menu) {
-      toggleKeymapMode();
+      openQuickSettings();
+      return;
+    }
+
+    if (defaultValue === InputUtils.Reload) {
+      sendRaw('\x12'); // Ctrl+R redraw
       return;
     }
 
@@ -522,14 +566,20 @@
     resetPage();
   }
 
-  // --- Render Layout from keyboards.json ---
+  // --- Render Layout from keyboards.json (5x10 Exact Layout) ---
   function renderKeyboard() {
-    if (!state.keyboardsData) return;
+    if (!state.keyboardsData || !state.showKeyboard) {
+      elKeyboardPanel.classList.add('hidden-panel');
+      adjustTerminalScale();
+      return;
+    }
 
+    elKeyboardPanel.classList.remove('hidden-panel');
     elKeyboardPanel.innerHTML = '';
+
     const isPortrait = window.innerHeight > window.innerWidth;
     const orientationKey = isPortrait ? 'portrait' : 'landscape';
-    const orientationConfig = state.keyboardsData[orientationKey];
+    const orientationConfig = state.keyboardsData[orientationKey] || state.keyboardsData['landscape'];
 
     const pageData = orientationConfig.pages[state.page] || orientationConfig.pages[0];
 
@@ -566,12 +616,11 @@
   }
 
   function bindAdvButtonTouch(btn, defaultValue) {
-    const neverKeymap = ['◧', '⏎', '⎋', '⇧', '+/-', 'abc', 'kmp', 'lck', '▤'];
+    const neverKeymap = ['◧', '⏎', '⎋', '⇧', '+/-', 'abc', 'kmp', 'lck', '▤', '↺'];
 
     const onPointerDown = () => {
       btn.classList.add('pressed');
       state.skipNextClick = false;
-      state.currentLongPressTarget = defaultValue;
 
       clearTimeout(state.longPressTimer);
       if (!neverKeymap.includes(defaultValue)) {
@@ -612,43 +661,307 @@
     btn.addEventListener('pointerleave', onPointerCancel);
   }
 
+  // --- 3x3 Floating Touch D-Pad with Drag & Drop (Screenshots 1, 7, 8) ---
+  function setupFloatingDpad() {
+    if (!state.showDpad) {
+      elFloatingDpad.classList.add('hidden-dpad');
+      return;
+    }
+    elFloatingDpad.classList.remove('hidden-dpad');
+
+    // Restore saved position
+    const savedPos = localStorage.getItem('tome_dpad_pos');
+    if (savedPos) {
+      try {
+        const { left, top } = JSON.parse(savedPos);
+        elFloatingDpad.style.left = `${left}px`;
+        elFloatingDpad.style.top = `${top}px`;
+        elFloatingDpad.style.right = 'auto';
+        elFloatingDpad.style.bottom = 'auto';
+      } catch (e) {}
+    }
+
+    // Drag handling
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let initialX = 0;
+    let initialY = 0;
+    let dragThresholdPassed = false;
+
+    const onPointerDown = (e) => {
+      // If clicked on button, wait to see if it's a drag or tap
+      isDragging = true;
+      dragThresholdPassed = false;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const rect = elFloatingDpad.getBoundingClientRect();
+      initialX = rect.left;
+      initialY = rect.top;
+
+      elFloatingDpad.setPointerCapture(e.pointerId);
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (!dragThresholdPassed && Math.hypot(dx, dy) > 8) {
+        dragThresholdPassed = true;
+      }
+
+      if (dragThresholdPassed) {
+        let newX = initialX + dx;
+        let newY = initialY + dy;
+
+        // Keep inside screen bounds
+        newX = Math.max(0, Math.min(window.innerWidth - elFloatingDpad.offsetWidth, newX));
+        newY = Math.max(0, Math.min(window.innerHeight - elFloatingDpad.offsetHeight, newY));
+
+        elFloatingDpad.style.left = `${newX}px`;
+        elFloatingDpad.style.top = `${newY}px`;
+        elFloatingDpad.style.right = 'auto';
+        elFloatingDpad.style.bottom = 'auto';
+      }
+    };
+
+    const onPointerUp = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      try { elFloatingDpad.releasePointerCapture(e.pointerId); } catch (err) {}
+
+      if (dragThresholdPassed) {
+        const rect = elFloatingDpad.getBoundingClientRect();
+        localStorage.setItem('tome_dpad_pos', JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top) }));
+      }
+    };
+
+    elFloatingDpad.addEventListener('pointerdown', onPointerDown);
+    elFloatingDpad.addEventListener('pointermove', onPointerMove);
+    elFloatingDpad.addEventListener('pointerup', onPointerUp);
+    elFloatingDpad.addEventListener('pointercancel', onPointerUp);
+
+    // Direction cells repeat hold listener
+    const cells = elFloatingDpad.querySelectorAll('.f-dpad-cell');
+    cells.forEach(cell => {
+      const dir = cell.getAttribute('data-dir');
+
+      const startHold = (e) => {
+        if (dragThresholdPassed) return;
+        cell.classList.add('active');
+        handleDirection(dir);
+
+        clearTimeout(state.repeatTimer);
+        clearInterval(state.repeatInterval);
+
+        if (dir !== '5') {
+          state.repeatTimer = setTimeout(() => {
+            state.repeatInterval = setInterval(() => {
+              handleDirection(dir);
+            }, 75);
+          }, 280);
+        }
+      };
+
+      const endHold = () => {
+        cell.classList.remove('active');
+        clearTimeout(state.repeatTimer);
+        clearInterval(state.repeatInterval);
+      };
+
+      cell.addEventListener('pointerdown', startHold);
+      cell.addEventListener('pointerup', endHold);
+      cell.addEventListener('pointercancel', endHold);
+      cell.addEventListener('pointerleave', endHold);
+    });
+  }
+
+  function resetDpadPosition() {
+    localStorage.removeItem('tome_dpad_pos');
+    elFloatingDpad.style.left = '';
+    elFloatingDpad.style.top = '';
+    elFloatingDpad.style.right = '';
+    elFloatingDpad.style.bottom = '';
+  }
+
+  // --- Quick Settings Modal Controller (Screenshots 2 & 3) ---
+  function openQuickSettings() {
+    haptic();
+    elQuickSettingsModal.classList.remove('hidden-modal');
+  }
+
+  function closeQuickSettings() {
+    elQuickSettingsModal.classList.add('hidden-modal');
+  }
+
+  function setupQuickSettings() {
+    elBtnQuickSettings.addEventListener('click', openQuickSettings);
+
+    const items = elQuickSettingsModal.querySelectorAll('.qs-item-btn');
+    items.forEach(btn => {
+      btn.addEventListener('click', () => {
+        haptic();
+        const action = btn.getAttribute('data-action');
+        closeQuickSettings();
+
+        switch (action) {
+          case 'fit-width':
+            state.fitAxis = 'width';
+            adjustTerminalScale();
+            break;
+          case 'fit-height':
+            state.fitAxis = 'height';
+            adjustTerminalScale();
+            break;
+          case 'reset-layout':
+            state.fitAxis = 'auto';
+            resetDpadPosition();
+            applyDockMode('overlap');
+            state.showRibbon = true;
+            state.showKeyboard = true;
+            state.showDpad = true;
+            applyVisibilityStates();
+            adjustTerminalScale();
+            break;
+          case 'add-floating':
+            const key = prompt('Enter shortcut key/command for floating button (e.g. m, f, R*):');
+            if (key) {
+              alert(`Floating button [${key}] created (feature stub).`);
+            }
+            break;
+          case 'toggle-dock':
+            applyDockMode(state.dockMode === 'docked' ? 'overlap' : 'docked');
+            break;
+          case 'toggle-ribbon':
+            state.showRibbon = !state.showRibbon;
+            localStorage.setItem('tome_show_ribbon', state.showRibbon);
+            applyVisibilityStates();
+            break;
+          case 'reset-dpad':
+            resetDpadPosition();
+            break;
+          case 'open-preferences':
+            openPreferences();
+            break;
+          case 'open-profiles':
+            alert(`Active Profile: ${state.profileMeta?.name || 'Default'}\nVariant: ${state.profileMeta?.brand?.version || '2.3.8-ah'}`);
+            break;
+          case 'quit-session':
+            if (confirm('Restart game session?')) {
+              sendJSON({ type: 'restart' });
+            }
+            break;
+        }
+      });
+    });
+
+    elQuickSettingsModal.addEventListener('click', (e) => {
+      if (e.target === elQuickSettingsModal) {
+        closeQuickSettings();
+      }
+    });
+  }
+
+  // --- Preferences Modal Controller (Screenshots 4 & 6) ---
+  function openPreferences() {
+    haptic();
+    if (state.profileMeta) {
+      elPrefProfileName.textContent = state.profileMeta.name || 'Default';
+      elPrefVariantName.textContent = state.profileMeta.title || 'ToME 2.3.8 ah';
+    }
+
+    elPrefFullscreen.checked = !!document.fullscreenElement;
+    elPrefEnableKeyboard.checked = state.showKeyboard;
+    elPrefOverlap.checked = state.dockMode === 'overlap';
+    elPrefEnableDpad.checked = state.showDpad;
+
+    elPreferencesModal.classList.remove('hidden-modal');
+  }
+
+  function closePreferences() {
+    elPreferencesModal.classList.add('hidden-modal');
+  }
+
+  function setupPreferences() {
+    elBtnPrefsClose.addEventListener('click', closePreferences);
+
+    elPrefFullscreen.addEventListener('change', () => {
+      if (elPrefFullscreen.checked) {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    elPrefEnableKeyboard.addEventListener('change', () => {
+      state.showKeyboard = elPrefEnableKeyboard.checked;
+      localStorage.setItem('tome_show_keyboard', state.showKeyboard);
+      applyVisibilityStates();
+    });
+
+    elPrefOverlap.addEventListener('change', () => {
+      applyDockMode(elPrefOverlap.checked ? 'overlap' : 'docked');
+    });
+
+    elPrefEnableDpad.addEventListener('change', () => {
+      state.showDpad = elPrefEnableDpad.checked;
+      localStorage.setItem('tome_show_dpad', state.showDpad);
+      applyVisibilityStates();
+    });
+
+    elPreferencesModal.addEventListener('click', (e) => {
+      if (e.target === elPreferencesModal) {
+        closePreferences();
+      }
+    });
+  }
+
+  function applyVisibilityStates() {
+    elRibbonBar.classList.toggle('hidden-ribbon', !state.showRibbon);
+    elFloatingDpad.classList.toggle('hidden-dpad', !state.showDpad);
+    elKeyboardPanel.classList.toggle('hidden-panel', !state.showKeyboard);
+    adjustTerminalScale();
+  }
+
   // --- OptionPopup Modal Dialog Controller ---
   function openOptionPopup(trigger) {
     haptic();
     state.editingTrigger = trigger;
-    elModalBadge.textContent = `Key: [ ${trigger} ]`;
+    elKeymapBadge.textContent = `Key: [ ${trigger} ]`;
 
     const existing = state.customKeymaps[trigger] || { action: '', alwaysVisible: false };
-    elModalInput.value = existing.action;
-    elModalCheck.checked = existing.alwaysVisible;
+    elKeymapInput.value = existing.action;
+    elKeymapCheck.checked = existing.alwaysVisible;
 
-    elModal.classList.remove('hidden-modal');
-    elModalInput.focus();
+    elKeymapModal.classList.remove('hidden-modal');
+    elKeymapInput.focus();
   }
 
   function closeOptionPopup() {
-    elModal.classList.add('hidden-modal');
+    elKeymapModal.classList.add('hidden-modal');
     state.editingTrigger = null;
   }
 
   function setupOptionPopup() {
-    const insertButtons = elModal.querySelectorAll('.quick-insert-btn');
+    const insertButtons = elKeymapModal.querySelectorAll('.quick-insert-btn');
     insertButtons.forEach(b => {
       b.addEventListener('click', () => {
         haptic();
         const str = b.getAttribute('data-insert');
-        elModalInput.value += str;
-        elModalInput.focus();
+        elKeymapInput.value += str;
+        elKeymapInput.focus();
       });
     });
 
-    elBtnSave.addEventListener('click', () => {
+    elBtnKeymapSave.addEventListener('click', () => {
       haptic();
       const trigger = state.editingTrigger;
       if (!trigger) return;
 
-      const action = elModalInput.value.trim();
-      const alwaysVisible = elModalCheck.checked;
+      const action = elKeymapInput.value.trim();
+      const alwaysVisible = elKeymapCheck.checked;
 
       if (action.length > 0) {
         state.customKeymaps[trigger] = { action, alwaysVisible };
@@ -661,7 +974,7 @@
       renderKeyboard();
     });
 
-    elBtnClear.addEventListener('click', () => {
+    elBtnKeymapClear.addEventListener('click', () => {
       haptic();
       const trigger = state.editingTrigger;
       if (!trigger) return;
@@ -672,18 +985,18 @@
       renderKeyboard();
     });
 
-    elBtnCancel.addEventListener('click', () => {
+    elBtnKeymapCancel.addEventListener('click', () => {
       closeOptionPopup();
     });
 
-    elModal.addEventListener('click', (e) => {
-      if (e.target === elModal) {
+    elKeymapModal.addEventListener('click', (e) => {
+      if (e.target === elKeymapModal) {
         closeOptionPopup();
       }
     });
   }
 
-  // --- Declarative Context Sniffer (Context Rules from Profile) ---
+  // --- Declarative Context Sniffer ---
   let contextMode = 'normal';
 
   function inspectScreenForContext(chunk) {
@@ -707,7 +1020,7 @@
       elDynamicRibbon.innerHTML = `
         <button class="ribbon-btn esc-btn" data-key="\\e">⎋ Esc</button>
         <button class="ribbon-btn" style="background:#ef4444;color:#fff;" data-key="n">✖ No (n)</button>
-        <button class="ribbon-btn" style="background:#86bf36;color:#000;" data-key="y">✔ Yes (y)</button>
+        <button class="ribbon-btn" style="background:#00ffff;color:#000;" data-key="y">✔ Yes (y)</button>
       `;
     } else if (!matchedRule && contextMode === 'yes_no') {
       contextMode = 'normal';
@@ -715,7 +1028,7 @@
     }
   }
 
-  // --- Setup Top Bar & Ribbon Controls ---
+  // --- Dock / Overlap Mode Management ---
   function applyDockMode(mode) {
     state.dockMode = mode;
     localStorage.setItem('tome_dock_mode', mode);
@@ -723,22 +1036,10 @@
     elApp.classList.remove('docked-mode', 'overlap-mode');
     elApp.classList.add(`${mode}-mode`);
 
-    elBtnDock.textContent = mode === 'docked' ? '⇱ Dock' : '⇲ Overlap';
     adjustTerminalScale();
   }
 
   function setupControls() {
-    elBtnDock.addEventListener('click', () => {
-      haptic();
-      const nextMode = state.dockMode === 'docked' ? 'overlap' : 'docked';
-      applyDockMode(nextMode);
-    });
-
-    elBtnGhost.addEventListener('click', () => {
-      haptic();
-      changeOpacityMode();
-    });
-
     elBtnRestart.addEventListener('click', () => {
       if (confirm('Restart game session?')) {
         sendJSON({ type: 'restart' });
@@ -755,7 +1056,7 @@
     });
   }
 
-  // --- Dynamic Profile Binding & App Startup ---
+  // --- Dynamic Profile Binding & Startup ---
   async function loadProfileAndInit() {
     try {
       const res = await fetch('/api/profile');
@@ -763,23 +1064,17 @@
         state.profileMeta = await res.json();
       }
     } catch (err) {
-      console.warn('Could not fetch /api/profile, using fallback metadata:', err);
+      console.warn('Could not fetch /api/profile:', err);
     }
 
-    // Bind metadata to DOM
     if (state.profileMeta) {
-      if (state.profileMeta.title) {
-        document.title = state.profileMeta.title;
-      }
-      if (state.profileMeta.brand) {
-        const logoEl = document.querySelector('#top-bar .brand .logo');
-        const verEl = document.querySelector('#top-bar .brand .version');
-        if (logoEl && state.profileMeta.brand.logo) logoEl.textContent = state.profileMeta.brand.logo;
-        if (verEl && state.profileMeta.brand.version) verEl.textContent = state.profileMeta.brand.version;
-      }
+      if (state.profileMeta.title) document.title = state.profileMeta.title;
+      const logoEl = document.querySelector('#top-bar .brand .logo');
+      const verEl = document.querySelector('#top-bar .brand .version');
+      if (logoEl && state.profileMeta.brand?.logo) logoEl.textContent = state.profileMeta.brand.logo;
+      if (verEl && state.profileMeta.brand?.version) verEl.textContent = state.profileMeta.brand.version;
     }
 
-    // Load keyboard config
     const kbdConfigPath = state.profileMeta?.keyboard_config || 'keyboards.json';
     try {
       const kbdRes = await fetch(kbdConfigPath);
@@ -791,7 +1086,11 @@
     loadPersistedKeymaps();
     applyDockMode(state.dockMode);
     setupControls();
+    setupQuickSettings();
+    setupPreferences();
     setupOptionPopup();
+    setupFloatingDpad();
+    applyVisibilityStates();
     initTerminal();
     renderKeyboard();
     connectWebSocket();
