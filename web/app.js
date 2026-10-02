@@ -104,9 +104,11 @@
     runningMode: false,
     opacityMode: 0, // 0: Normal, 1: Ghost, 2: Hidden
     fitAxis: 'auto', // 'auto' | 'width' | 'height'
+    keyboardStyle: localStorage.getItem('tome_keyboard_style') || 'adv', // 'adv' | 'simple'
     customKeymaps: {},
     floatingButtons: [],
     customRibbon: [],
+    customPresets: [],
     editorTarget: null,
     editingTrigger: null,
     longPressTimer: null,
@@ -124,6 +126,8 @@
   const elIndShift = document.getElementById('ind-shift');
   const elIndLock = document.getElementById('ind-lock');
   const elIndRun = document.getElementById('ind-run');
+  const elBtnToggleKeyboard = document.getElementById('btn-toggle-keyboard');
+  const elBtnSwitchKbdStyle = document.getElementById('btn-switch-kbd-style');
   const elBtnQuickSettings = document.getElementById('btn-quick-settings');
   const elBtnRedraw = document.getElementById('btn-redraw');
   const elBtnRestart = document.getElementById('btn-restart');
@@ -136,6 +140,23 @@
 
   // Quick Settings Modal
   const elQuickSettingsModal = document.getElementById('quick-settings-modal');
+
+  // Manage Floating Buttons Modal
+  const elManageFbModal = document.getElementById('manage-fb-modal');
+  const elBtnManageFbClose = document.getElementById('btn-manage-fb-close');
+  const elBtnManageFbDone = document.getElementById('btn-manage-fb-done');
+  const elBtnFbAddNew = document.getElementById('btn-fb-add-new');
+  const elBtnFbDeleteAll = document.getElementById('btn-fb-delete-all');
+  const elManageFbList = document.getElementById('manage-fb-list');
+  const elFbCountBadge = document.getElementById('fb-count-badge');
+
+  // Presets Modal
+  const elPresetsModal = document.getElementById('presets-modal');
+  const elBtnPresetsClose = document.getElementById('btn-presets-close');
+  const elBtnPresetsDone = document.getElementById('btn-presets-done');
+  const elPresetNameInput = document.getElementById('preset-name-input');
+  const elBtnPresetSave = document.getElementById('btn-preset-save');
+  const elPresetsList = document.getElementById('presets-list');
 
   // Preferences Modal
   const elPreferencesModal = document.getElementById('preferences-modal');
@@ -235,6 +256,412 @@
 
   function persistRibbon() {
     localStorage.setItem('tome_custom_ribbon', JSON.stringify(state.customRibbon));
+  }
+
+  // --- Built-in & Custom Presets Management ---
+  const BUILTIN_PRESETS = [
+    {
+      id: 'builtin_default',
+      name: 'Default',
+      isBuiltin: true,
+      desc: 'Standard 5x10 AdvKeyboard + Default Ribbon & Shortcuts',
+      keyboardStyle: 'adv',
+      showKeyboard: true,
+      showDpad: true,
+      dockMode: 'overlap',
+      floatingButtons: DEFAULT_FLOATING_BUTTONS,
+      customRibbon: DEFAULT_RIBBON_BUTTONS,
+      customKeymaps: {}
+    },
+    {
+      id: 'builtin_minimal_touch',
+      name: 'Minimal Touch',
+      isBuiltin: true,
+      desc: 'Maximized Screen, Hidden Keyboard, D-Pad + 4 Quick Action Badges',
+      keyboardStyle: 'adv',
+      showKeyboard: false,
+      showDpad: true,
+      dockMode: 'overlap',
+      floatingButtons: [
+        { id: 'fb_f1', label: 'F1', action: '{F1}', left: 16, top: 120 },
+        { id: 'fb_f2', label: 'F2', action: '{F2}', left: 16, top: 175 },
+        { id: 'fb_inv', label: '🎒 Inven', action: 'i', left: null, top: null },
+        { id: 'fb_rest', label: '💤 Rest', action: 'R&\n', left: null, top: null }
+      ],
+      customRibbon: DEFAULT_RIBBON_BUTTONS,
+      customKeymaps: {}
+    },
+    {
+      id: 'builtin_compact_simple',
+      name: 'Compact 3-Row',
+      isBuiltin: true,
+      desc: 'Slim 3-Row Keyboard (High Viewport) + Direction Pad & Floating Badges',
+      keyboardStyle: 'simple',
+      showKeyboard: true,
+      showDpad: true,
+      dockMode: 'overlap',
+      floatingButtons: DEFAULT_FLOATING_BUTTONS,
+      customRibbon: DEFAULT_RIBBON_BUTTONS,
+      customKeymaps: {}
+    }
+  ];
+
+  function loadCustomPresets() {
+    const raw = localStorage.getItem('tome_presets');
+    if (raw) {
+      try {
+        state.customPresets = JSON.parse(raw);
+        if (!Array.isArray(state.customPresets)) state.customPresets = [];
+      } catch (e) {
+        state.customPresets = [];
+      }
+    } else {
+      state.customPresets = [];
+    }
+  }
+
+  function persistCustomPresets() {
+    localStorage.setItem('tome_presets', JSON.stringify(state.customPresets));
+  }
+
+  function openPresetsModal() {
+    haptic();
+    loadCustomPresets();
+    renderPresetsList();
+    if (elPresetNameInput) elPresetNameInput.value = '';
+    if (elPresetsModal) elPresetsModal.classList.remove('hidden-modal');
+  }
+
+  function closePresetsModal() {
+    if (elPresetsModal) elPresetsModal.classList.add('hidden-modal');
+  }
+
+  function renderPresetsList() {
+    if (!elPresetsList) return;
+    elPresetsList.innerHTML = '';
+
+    const allPresets = [...BUILTIN_PRESETS, ...state.customPresets];
+
+    allPresets.forEach(preset => {
+      const card = document.createElement('div');
+      card.className = 'preset-card';
+
+      const info = document.createElement('div');
+      info.className = 'preset-info';
+
+      const titleRow = document.createElement('div');
+      titleRow.className = 'preset-title-row';
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'preset-name';
+      nameEl.textContent = preset.name;
+      titleRow.appendChild(nameEl);
+
+      const tag = document.createElement('span');
+      tag.className = 'preset-tag ' + (preset.isBuiltin ? 'tag-builtin' : 'tag-custom');
+      tag.textContent = preset.isBuiltin ? 'Built-in' : 'Custom';
+      titleRow.appendChild(tag);
+
+      info.appendChild(titleRow);
+
+      const descEl = document.createElement('div');
+      descEl.className = 'preset-desc';
+      descEl.textContent = preset.desc || (preset.keyboardStyle === 'simple' ? '3-Row Simple' : '5x10 Adv');
+      info.appendChild(descEl);
+
+      card.appendChild(info);
+
+      const actions = document.createElement('div');
+      actions.className = 'preset-actions';
+
+      const applyBtn = document.createElement('button');
+      applyBtn.type = 'button';
+      applyBtn.className = 'modal-btn btn-primary btn-sm';
+      applyBtn.textContent = '🔄 Apply';
+      applyBtn.addEventListener('click', () => {
+        haptic();
+        applyPreset(preset);
+      });
+      actions.appendChild(applyBtn);
+
+      if (!preset.isBuiltin) {
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'modal-btn btn-danger btn-sm';
+        delBtn.textContent = '✕';
+        delBtn.title = 'Delete preset';
+        delBtn.addEventListener('click', () => {
+          haptic();
+          if (confirm(`Delete preset "${preset.name}"?`)) {
+            state.customPresets = state.customPresets.filter(p => p.id !== preset.id);
+            persistCustomPresets();
+            renderPresetsList();
+          }
+        });
+        actions.appendChild(delBtn);
+      }
+
+      card.appendChild(actions);
+      elPresetsList.appendChild(card);
+    });
+  }
+
+  function applyPreset(preset) {
+    if (preset.keyboardStyle) {
+      state.keyboardStyle = preset.keyboardStyle;
+      localStorage.setItem('tome_keyboard_style', state.keyboardStyle);
+    }
+    if (preset.showKeyboard !== undefined) {
+      state.showKeyboard = preset.showKeyboard;
+      localStorage.setItem('tome_show_keyboard', state.showKeyboard);
+    }
+    if (preset.showDpad !== undefined) {
+      state.showDpad = preset.showDpad;
+      localStorage.setItem('tome_show_dpad', state.showDpad);
+    }
+    if (preset.dockMode) {
+      applyDockMode(preset.dockMode);
+    }
+    if (preset.floatingButtons) {
+      state.floatingButtons = JSON.parse(JSON.stringify(preset.floatingButtons));
+      persistFloatingButtons();
+      renderFloatingButtons();
+    }
+    if (preset.customRibbon) {
+      state.customRibbon = JSON.parse(JSON.stringify(preset.customRibbon));
+      persistRibbon();
+      renderDynamicRibbon();
+    }
+    if (preset.customKeymaps) {
+      state.customKeymaps = JSON.parse(JSON.stringify(preset.customKeymaps));
+      persistKeymaps();
+    }
+
+    applyVisibilityStates();
+    updateKeyboardToggleBtn();
+    updateKeyboardStyleBtn();
+    renderKeyboard();
+    adjustTerminalScale();
+    closePresetsModal();
+  }
+
+  function saveCurrentAsPreset() {
+    const rawName = elPresetNameInput ? elPresetNameInput.value.trim() : '';
+    const name = rawName || ('Preset ' + (state.customPresets.length + 1));
+    const kbdDesc = state.keyboardStyle === 'simple' ? '3-Row Compact' : '5x10 Adv';
+    const fbCount = state.floatingButtons.length;
+    const rbCount = state.customRibbon.length;
+
+    const newPreset = {
+      id: 'preset_' + Date.now(),
+      name: name,
+      isBuiltin: false,
+      desc: `${kbdDesc}, ${fbCount} floating btns, ${rbCount} ribbon items`,
+      keyboardStyle: state.keyboardStyle,
+      showKeyboard: state.showKeyboard,
+      showDpad: state.showDpad,
+      dockMode: state.dockMode,
+      floatingButtons: JSON.parse(JSON.stringify(state.floatingButtons)),
+      customRibbon: JSON.parse(JSON.stringify(state.customRibbon)),
+      customKeymaps: JSON.parse(JSON.stringify(state.customKeymaps))
+    };
+
+    state.customPresets.push(newPreset);
+    persistCustomPresets();
+    renderPresetsList();
+    if (elPresetNameInput) elPresetNameInput.value = '';
+  }
+
+  function setupPresetsModal() {
+    if (elBtnPresetsClose) elBtnPresetsClose.addEventListener('click', closePresetsModal);
+    if (elBtnPresetsDone) elBtnPresetsDone.addEventListener('click', closePresetsModal);
+    if (elBtnPresetSave) {
+      elBtnPresetSave.addEventListener('click', () => {
+        haptic();
+        saveCurrentAsPreset();
+      });
+    }
+    if (elPresetNameInput) {
+      elPresetNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          haptic();
+          saveCurrentAsPreset();
+        }
+      });
+    }
+    if (elPresetsModal) {
+      elPresetsModal.addEventListener('click', (e) => {
+        if (e.target === elPresetsModal) closePresetsModal();
+      });
+    }
+  }
+
+  // --- Manage Floating Buttons Modal Controller ---
+  function openManageFbModal() {
+    haptic();
+    renderManageFbList();
+    if (elManageFbModal) elManageFbModal.classList.remove('hidden-modal');
+  }
+
+  function closeManageFbModal() {
+    if (elManageFbModal) elManageFbModal.classList.add('hidden-modal');
+  }
+
+  function renderManageFbList() {
+    if (!elManageFbList) return;
+    elManageFbList.innerHTML = '';
+
+    if (elFbCountBadge) {
+      elFbCountBadge.textContent = `Active Buttons (${state.floatingButtons.length})`;
+    }
+
+    if (state.floatingButtons.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'manage-fb-empty';
+      empty.textContent = 'No floating buttons yet. Tap "➕ Add New" to create one.';
+      elManageFbList.appendChild(empty);
+      return;
+    }
+
+    state.floatingButtons.forEach((fb, idx) => {
+      const item = document.createElement('div');
+      item.className = 'manage-fb-item';
+
+      const info = document.createElement('div');
+      info.className = 'manage-fb-info';
+
+      const main = document.createElement('div');
+      main.className = 'manage-fb-main';
+
+      const badge = document.createElement('span');
+      badge.className = 'manage-fb-badge';
+      badge.textContent = fb.label || 'Btn';
+      main.appendChild(badge);
+
+      const action = document.createElement('span');
+      action.className = 'manage-fb-action';
+      action.textContent = fb.action;
+      action.title = fb.action;
+      main.appendChild(action);
+
+      info.appendChild(main);
+
+      const pos = document.createElement('div');
+      pos.className = 'manage-fb-pos';
+      pos.textContent = `Pos: (${Math.round(fb.left || 0)}, ${Math.round(fb.top || 0)})`;
+      info.appendChild(pos);
+
+      item.appendChild(info);
+
+      const actions = document.createElement('div');
+      actions.className = 'manage-fb-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'modal-btn btn-secondary btn-sm';
+      editBtn.textContent = '✏️ Edit';
+      editBtn.addEventListener('click', () => {
+        haptic();
+        closeManageFbModal();
+        openButtonEditor({
+          type: 'floating',
+          index: idx,
+          id: fb.id,
+          isNew: false,
+          label: fb.label,
+          action: fb.action,
+          left: fb.left,
+          top: fb.top
+        });
+      });
+      actions.appendChild(editBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'modal-btn btn-danger btn-sm';
+      delBtn.textContent = '🗑️ Delete';
+      delBtn.addEventListener('click', () => {
+        haptic();
+        state.floatingButtons.splice(idx, 1);
+        persistFloatingButtons();
+        renderFloatingButtons();
+        renderManageFbList();
+      });
+      actions.appendChild(delBtn);
+
+      item.appendChild(actions);
+      elManageFbList.appendChild(item);
+    });
+  }
+
+  function setupManageFbModal() {
+    if (elBtnManageFbClose) elBtnManageFbClose.addEventListener('click', closeManageFbModal);
+    if (elBtnManageFbDone) elBtnManageFbDone.addEventListener('click', closeManageFbModal);
+    if (elBtnFbAddNew) {
+      elBtnFbAddNew.addEventListener('click', () => {
+        haptic();
+        closeManageFbModal();
+        openButtonEditor({ type: 'floating', isNew: true });
+      });
+    }
+    if (elBtnFbDeleteAll) {
+      elBtnFbDeleteAll.addEventListener('click', () => {
+        haptic();
+        if (state.floatingButtons.length === 0) return;
+        if (confirm('Delete all floating buttons?')) {
+          state.floatingButtons = [];
+          persistFloatingButtons();
+          renderFloatingButtons();
+          renderManageFbList();
+        }
+      });
+    }
+    if (elManageFbModal) {
+      elManageFbModal.addEventListener('click', (e) => {
+        if (e.target === elManageFbModal) closeManageFbModal();
+      });
+    }
+  }
+
+  // --- Keyboard Visibility & Style Controllers ---
+  function toggleKeyboardVisibility() {
+    haptic();
+    state.showKeyboard = !state.showKeyboard;
+    localStorage.setItem('tome_show_keyboard', state.showKeyboard);
+    applyVisibilityStates();
+    if (state.showKeyboard) {
+      renderKeyboard();
+    }
+  }
+
+  function updateKeyboardToggleBtn() {
+    if (!elBtnToggleKeyboard) return;
+    elBtnToggleKeyboard.classList.toggle('active-toggled', !state.showKeyboard);
+    elBtnToggleKeyboard.title = state.showKeyboard ? 'Toggle Keyboard (Hide)' : 'Toggle Keyboard (Show)';
+  }
+
+  function switchKeyboardStyle(forcedStyle) {
+    haptic();
+    if (forcedStyle) {
+      state.keyboardStyle = forcedStyle;
+    } else {
+      state.keyboardStyle = state.keyboardStyle === 'simple' ? 'adv' : 'simple';
+    }
+    localStorage.setItem('tome_keyboard_style', state.keyboardStyle);
+    updateKeyboardStyleBtn();
+    renderKeyboard();
+  }
+
+  function updateKeyboardStyleBtn() {
+    if (!elBtnSwitchKbdStyle) return;
+    if (state.keyboardStyle === 'simple') {
+      elBtnSwitchKbdStyle.textContent = '3-Row';
+      elBtnSwitchKbdStyle.title = 'Keyboard: Simple 3-Row (Tap for 5x10 Adv)';
+    } else {
+      elBtnSwitchKbdStyle.textContent = '5x10';
+      elBtnSwitchKbdStyle.title = 'Keyboard: Adv 5x10 (Tap for Simple 3-Row)';
+    }
   }
 
   // --- Terminal Initialization & Viewport Auto-Fitter ---
@@ -770,7 +1197,7 @@
     resetPage();
   }
 
-  // --- Render Layout from keyboards.json (5x10 Exact Layout) ---
+  // --- Render Layout from keyboards.json (5x10 Adv or 3-Row Simple Layout) ---
   function renderKeyboard() {
     if (!state.keyboardsData || !state.showKeyboard) {
       elKeyboardPanel.classList.add('hidden-panel');
@@ -781,11 +1208,23 @@
     elKeyboardPanel.classList.remove('hidden-panel');
     elKeyboardPanel.innerHTML = '';
 
-    const isPortrait = window.innerHeight > window.innerWidth;
-    const orientationKey = isPortrait ? 'portrait' : 'landscape';
-    const orientationConfig = state.keyboardsData[orientationKey] || state.keyboardsData['landscape'];
+    const isSimple = state.keyboardStyle === 'simple';
+    elKeyboardPanel.classList.toggle('simple-keyboard', isSimple);
 
-    const pageData = orientationConfig.pages[state.page] || orientationConfig.pages[0];
+    const isPortrait = window.innerHeight > window.innerWidth;
+    let orientationKey;
+    if (isSimple) {
+      orientationKey = isPortrait ? 'simple_portrait' : 'simple_landscape';
+      if (!state.keyboardsData[orientationKey]) {
+        orientationKey = state.keyboardsData['simple_landscape'] ? 'simple_landscape' : (isPortrait ? 'portrait' : 'landscape');
+      }
+    } else {
+      orientationKey = isPortrait ? 'portrait' : 'landscape';
+    }
+
+    const orientationConfig = state.keyboardsData[orientationKey] || state.keyboardsData['landscape'];
+    const pageIndex = isSimple ? 0 : (state.page || 0);
+    const pageData = orientationConfig.pages[pageIndex] || orientationConfig.pages[0];
 
     for (const rowKeys of pageData.keys) {
       const rowEl = document.createElement('div');
@@ -1188,6 +1627,18 @@
         closeQuickSettings();
 
         switch (action) {
+          case 'toggle-keyboard':
+            toggleKeyboardVisibility();
+            break;
+          case 'switch-keyboard-style':
+            switchKeyboardStyle();
+            break;
+          case 'manage-floating':
+            openManageFbModal();
+            break;
+          case 'open-presets':
+            openPresetsModal();
+            break;
           case 'fit-width':
             state.fitAxis = 'width';
             adjustTerminalScale();
@@ -1203,7 +1654,12 @@
             state.showRibbon = true;
             state.showKeyboard = true;
             state.showDpad = true;
+            state.keyboardStyle = 'adv';
+            localStorage.setItem('tome_keyboard_style', 'adv');
+            updateKeyboardToggleBtn();
+            updateKeyboardStyleBtn();
             applyVisibilityStates();
+            renderKeyboard();
             adjustTerminalScale();
             break;
           case 'add-floating':
@@ -1305,6 +1761,10 @@
     elRibbonBar.classList.toggle('hidden-ribbon', !state.showRibbon);
     elFloatingDpad.classList.toggle('hidden-dpad', !state.showDpad);
     elKeyboardPanel.classList.toggle('hidden-panel', !state.showKeyboard);
+    updateKeyboardToggleBtn();
+    if (elPrefEnableKeyboard) {
+      elPrefEnableKeyboard.checked = state.showKeyboard;
+    }
     adjustTerminalScale();
   }
 
@@ -1342,7 +1802,7 @@
       elKeymapBadge.textContent = `Key: [ ${trigger} ]`;
       if (elEditorLabelGroup) elEditorLabelGroup.style.display = 'none';
       if (elEditorGhostRow) elEditorGhostRow.style.display = 'flex';
-      elBtnKeymapClear.textContent = 'Clear';
+      elBtnKeymapClear.textContent = 'Clear Keymap';
       elBtnKeymapClear.style.display = 'inline-block';
       elBtnKeymapSave.textContent = 'Save Keymap';
 
@@ -1354,7 +1814,7 @@
       elKeymapBadge.textContent = target.isNew ? 'Floating Button (New)' : 'Floating Button';
       if (elEditorLabelGroup) elEditorLabelGroup.style.display = 'flex';
       if (elEditorGhostRow) elEditorGhostRow.style.display = 'none';
-      elBtnKeymapClear.textContent = 'Delete';
+      elBtnKeymapClear.textContent = '🗑️ Delete Button';
       elBtnKeymapClear.style.display = target.isNew ? 'none' : 'inline-block';
       elBtnKeymapSave.textContent = 'Save Button';
 
@@ -1370,7 +1830,7 @@
       elKeymapBadge.textContent = target.isNew ? 'Ribbon Button (New)' : `Ribbon Button #${target.index + 1}`;
       if (elEditorLabelGroup) elEditorLabelGroup.style.display = 'flex';
       if (elEditorGhostRow) elEditorGhostRow.style.display = 'none';
-      elBtnKeymapClear.textContent = 'Delete';
+      elBtnKeymapClear.textContent = '🗑️ Delete from Ribbon';
       elBtnKeymapClear.style.display = target.isNew ? 'none' : 'inline-block';
       elBtnKeymapSave.textContent = 'Save Button';
 
@@ -1478,6 +1938,9 @@
           }
           persistFloatingButtons();
           renderFloatingButtons();
+          if (elManageFbModal && !elManageFbModal.classList.contains('hidden-modal')) {
+            renderManageFbList();
+          }
         }
       } else if (target.type === 'ribbon') {
         if (action.length > 0) {
@@ -1518,6 +1981,9 @@
           state.floatingButtons = state.floatingButtons.filter(b => b.id !== target.id);
           persistFloatingButtons();
           renderFloatingButtons();
+          if (elManageFbModal && !elManageFbModal.classList.contains('hidden-modal')) {
+            renderManageFbList();
+          }
         }
       } else if (target.type === 'ribbon') {
         if (!target.isNew && target.index >= 0) {
@@ -1674,6 +2140,14 @@ ${info.stderr || '(empty)'}
   }
 
   function setupControls() {
+    if (elBtnToggleKeyboard) {
+      elBtnToggleKeyboard.addEventListener('click', toggleKeyboardVisibility);
+    }
+
+    if (elBtnSwitchKbdStyle) {
+      elBtnSwitchKbdStyle.addEventListener('click', () => switchKeyboardStyle());
+    }
+
     if (elBtnRedraw) {
       elBtnRedraw.addEventListener('click', () => {
         haptic();
@@ -1740,16 +2214,21 @@ ${info.stderr || '(empty)'}
     loadPersistedKeymaps();
     loadFloatingButtons();
     loadCustomRibbon();
+    loadCustomPresets();
     applyDockMode(state.dockMode);
     setupControls();
     setupQuickSettings();
     setupPreferences();
     setupButtonEditor();
+    setupManageFbModal();
+    setupPresetsModal();
     setupCrashModal();
     setupFloatingDpad();
     renderFloatingButtons();
     renderDynamicRibbon();
     applyVisibilityStates();
+    updateKeyboardToggleBtn();
+    updateKeyboardStyleBtn();
     initTerminal();
     renderKeyboard();
     connectWebSocket();

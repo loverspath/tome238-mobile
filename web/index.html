@@ -30,6 +30,10 @@
         <span id="ind-lock" class="status-pill hidden-pill">LCK</span>
         <!-- Run Indicator Pill -->
         <span id="ind-run" class="status-pill hidden-pill">RUN</span>
+        <!-- Keyboard Toggle Button (Show/Hide) -->
+        <button id="btn-toggle-keyboard" class="top-btn icon-btn" title="Toggle Keyboard (Show/Hide)">⌨</button>
+        <!-- Keyboard Style Switch (5x10 / Simple 3-Row) -->
+        <button id="btn-switch-kbd-style" class="top-btn kbd-style-pill" title="Switch Keyboard Style (Adv 5x10 / Simple 3-Row)">5x10</button>
         <!-- Screen Redraw Button -->
         <button id="btn-redraw" class="top-btn icon-btn" title="Redraw Screen (Ctrl+R)">⟳</button>
         <!-- Quick Settings Menu Button -->
@@ -102,13 +106,17 @@
       <div class="quick-settings-card">
         <div class="qs-header">Quick Settings</div>
         <div class="qs-menu-list">
-          <button type="button" class="qs-item-btn" data-action="fit-width">Fit Width</button>
-          <button type="button" class="qs-item-btn" data-action="fit-height">Fit Height</button>
-          <button type="button" class="qs-item-btn" data-action="reset-layout">Reset Layout</button>
+          <button type="button" class="qs-item-btn" data-action="toggle-keyboard">Toggle Keyboard (Show/Hide)</button>
+          <button type="button" class="qs-item-btn" data-action="switch-keyboard-style">Switch Keyboard Style (Adv 5x10 / Simple 3-Row)</button>
+          <button type="button" class="qs-item-btn" data-action="manage-floating">Manage Floating Buttons</button>
+          <button type="button" class="qs-item-btn" data-action="open-presets">Keymap &amp; Button Presets</button>
           <button type="button" class="qs-item-btn" data-action="add-floating">Add Floating Button</button>
           <button type="button" class="qs-item-btn" data-action="toggle-dock">Keyboard Position (Dock/Overlap)</button>
           <button type="button" class="qs-item-btn" data-action="toggle-ribbon">Show Button Ribbon</button>
           <button type="button" class="qs-item-btn" data-action="reset-ribbon">Reset Ribbon Buttons</button>
+          <button type="button" class="qs-item-btn" data-action="reset-layout">Reset Layout</button>
+          <button type="button" class="qs-item-btn" data-action="fit-width">Fit Width</button>
+          <button type="button" class="qs-item-btn" data-action="fit-height">Fit Height</button>
           <button type="button" class="qs-item-btn" data-action="reset-dpad">Reset D-Pad Position</button>
           <button type="button" class="qs-item-btn" data-action="open-preferences">Preferences</button>
           <button type="button" class="qs-item-btn" data-action="open-profiles">Profiles</button>
@@ -255,6 +263,56 @@
           <button type="button" id="btn-keymap-clear" class="modal-btn btn-danger">Delete</button>
           <button type="button" id="btn-keymap-cancel" class="modal-btn btn-secondary">Cancel</button>
           <button type="button" id="btn-keymap-save" class="modal-btn btn-primary">Save Button</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Floating Buttons Modal -->
+    <div id="manage-fb-modal" class="modal-overlay hidden-modal">
+      <div class="modal-dialog manage-dialog">
+        <div class="modal-header">
+          <span class="modal-title">📌 Manage Floating Buttons</span>
+          <button type="button" class="prefs-close-btn" id="btn-manage-fb-close">✕</button>
+        </div>
+        <div class="modal-body manage-fb-body">
+          <div class="fb-toolbar-row">
+            <span id="fb-count-badge" class="fb-count-badge">Active Buttons (0)</span>
+            <button type="button" id="btn-fb-add-new" class="modal-btn btn-primary btn-sm">➕ Add New</button>
+          </div>
+          <div id="manage-fb-list" class="manage-fb-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+        <div class="modal-footer manage-fb-footer">
+          <button type="button" id="btn-fb-delete-all" class="modal-btn btn-danger">🗑️ Delete All Buttons</button>
+          <button type="button" id="btn-manage-fb-done" class="modal-btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layout & Button Presets Modal -->
+    <div id="presets-modal" class="modal-overlay hidden-modal">
+      <div class="modal-dialog presets-dialog">
+        <div class="modal-header">
+          <span class="modal-title">🗂️ Keymap &amp; Button Presets</span>
+          <button type="button" class="prefs-close-btn" id="btn-presets-close">✕</button>
+        </div>
+        <div class="modal-body presets-body">
+          <div class="preset-save-box">
+            <label class="modal-label" for="preset-name-input">Save Current Settings as Preset:</label>
+            <div class="preset-input-row">
+              <input type="text" id="preset-name-input" class="modal-input" placeholder="e.g. Warrior, Mage, Minimal Touch" autocomplete="off" autocapitalize="words">
+              <button type="button" id="btn-preset-save" class="modal-btn btn-primary">💾 Save</button>
+            </div>
+          </div>
+
+          <div class="palette-title" style="margin-top: 6px;">Available Presets:</div>
+          <div id="presets-list" class="presets-items-container">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-presets-done" class="modal-btn btn-secondary">Close</button>
         </div>
       </div>
     </div>
