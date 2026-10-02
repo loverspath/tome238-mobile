@@ -1,0 +1,34 @@
+{
+  "id": "tomenet",
+  "name": "TomeNET 4.9.4 (Real-time C/S)",
+  "title": "TomeNET 4.9.4 Mobile Terminal",
+  "brand": {
+    "logo": "🌐 TomeNET",
+    "version": "4.9.4"
+  },
+  "executable": "ref_repos/tomenet/tomenet",
+  "args": ["-c", "-i", "-p18348", "-q", "127.0.0.1"],
+  "cwd": "ref_repos/tomenet",
+  "companion": {
+    "executable": "ref_repos/tomenet/tomenet.server",
+    "cwd": "ref_repos/tomenet",
+    "port": 18348
+  },
+  "env": {
+    "TERM": "xterm-256color",
+    "LANG": "en_US.UTF-8"
+  },
+  "geometry": {
+    "cols": 80,
+    "rows": 24
+  },
+  "fixed_geometry": true,
+  "redraw_key": "\u0012",
+  "keyboard_config": "keyboards.json",
+  "context_rules": [
+    {
+      "type": "yes_no",
+      "pattern": "\\((y\\/n|y\\/n\\/esc|\\[y\\/n\\])\\)"
+    }
+  ]
+}

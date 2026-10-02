@@ -18,9 +18,10 @@
   <div id="app" class="overlap-mode">
     <!-- Top Bar -->
     <header id="top-bar">
-      <div class="brand">
-        <span class="logo">⚡ ToME</span>
-        <span class="version">2.3.8-ah</span>
+      <div class="brand" id="brand-profile-btn" role="button" title="Switch Game Profile">
+        <span class="logo" id="brand-logo">⚡ ToME</span>
+        <span class="version" id="brand-version">2.3.8-ah</span>
+        <span class="profile-arrow">▾</span>
       </div>
       <div class="status-group">
         <span id="conn-status" class="status-indicator disconnected">Connecting...</span>
@@ -313,6 +314,25 @@
         </div>
         <div class="modal-footer">
           <button type="button" id="btn-presets-done" class="modal-btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Profile Switcher Modal -->
+    <div id="profiles-modal" class="modal-overlay hidden-modal">
+      <div class="modal-dialog profiles-dialog">
+        <div class="modal-header">
+          <span class="modal-title">🎮 Select Game Profile</span>
+          <button type="button" class="prefs-close-btn" id="btn-profiles-close">✕</button>
+        </div>
+        <div class="modal-body profiles-body">
+          <div class="palette-title">Available Game Engines &amp; Profiles:</div>
+          <div id="profiles-list" class="profiles-list-container">
+            <!-- Dynamically populated from /api/profiles -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-profiles-done" class="modal-btn btn-secondary">Close</button>
         </div>
       </div>
     </div>

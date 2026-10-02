@@ -20,3 +20,5 @@ __pycache__/
 *.log
 server.log
 game/lib/note/*.nte
+ref_repos
+game/lib/user/*.prf

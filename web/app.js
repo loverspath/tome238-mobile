@@ -123,6 +123,9 @@
   // --- DOM Elements ---
   const elApp = document.getElementById('app');
   const elStatus = document.getElementById('conn-status');
+  const elBrandProfileBtn = document.getElementById('brand-profile-btn');
+  const elBrandLogo = document.getElementById('brand-logo');
+  const elBrandVersion = document.getElementById('brand-version');
   const elIndShift = document.getElementById('ind-shift');
   const elIndLock = document.getElementById('ind-lock');
   const elIndRun = document.getElementById('ind-run');
@@ -140,6 +143,12 @@
 
   // Quick Settings Modal
   const elQuickSettingsModal = document.getElementById('quick-settings-modal');
+
+  // Game Profiles Modal
+  const elProfilesModal = document.getElementById('profiles-modal');
+  const elBtnProfilesClose = document.getElementById('btn-profiles-close');
+  const elBtnProfilesDone = document.getElementById('btn-profiles-done');
+  const elProfilesList = document.getElementById('profiles-list');
 
   // Manage Floating Buttons Modal
   const elManageFbModal = document.getElementById('manage-fb-modal');
@@ -664,6 +673,126 @@
     }
   }
 
+  // --- Game Profiles Switcher Controller ---
+  async function openProfilesModal() {
+    haptic();
+    if (elProfilesModal) elProfilesModal.classList.remove('hidden-modal');
+    await renderProfilesList();
+  }
+
+  function closeProfilesModal() {
+    if (elProfilesModal) elProfilesModal.classList.add('hidden-modal');
+  }
+
+  async function renderProfilesList() {
+    if (!elProfilesList) return;
+    elProfilesList.innerHTML = '<div style="color: var(--fg-dim); font-size: 12px; padding: 12px; text-align: center;">Loading profiles...</div>';
+
+    try {
+      const res = await fetch('/api/profiles');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const profiles = await res.json();
+      elProfilesList.innerHTML = '';
+
+      profiles.forEach(p => {
+        const card = document.createElement('div');
+        const isActive = p.active || (state.profileMeta && p.id === state.profileMeta.id);
+        card.className = 'profile-select-card' + (isActive ? ' active-profile' : '');
+
+        const left = document.createElement('div');
+        left.className = 'profile-card-left';
+
+        const header = document.createElement('div');
+        header.className = 'profile-card-header';
+
+        const logo = document.createElement('span');
+        logo.className = 'profile-card-logo';
+        logo.textContent = p.brand?.logo || '🎮';
+        header.appendChild(logo);
+
+        const name = document.createElement('span');
+        name.className = 'profile-card-name';
+        name.textContent = p.name || p.id;
+        header.appendChild(name);
+
+        left.appendChild(header);
+
+        const desc = document.createElement('div');
+        desc.className = 'profile-card-desc';
+        desc.textContent = p.title || (p.id === 'tomenet' ? 'Real-time Multiplayer Roguelike C/S' : 'Classic Single Player Roguelike');
+        left.appendChild(desc);
+
+        card.appendChild(left);
+
+        const badge = document.createElement('span');
+        badge.className = 'profile-card-badge ' + (isActive ? 'badge-active' : 'badge-switch');
+        badge.textContent = isActive ? 'Active ✓' : 'Switch 🎮';
+        card.appendChild(badge);
+
+        card.addEventListener('click', () => {
+          if (!isActive) {
+            switchProfile(p.id);
+          } else {
+            closeProfilesModal();
+          }
+        });
+
+        elProfilesList.appendChild(card);
+      });
+    } catch (err) {
+      elProfilesList.innerHTML = `<div style="color: #fca5a5; font-size: 12px; padding: 12px; text-align: center;">Failed to load profiles: ${err.message}</div>`;
+    }
+  }
+
+  async function switchProfile(profileId) {
+    haptic();
+    closeProfilesModal();
+    updateStatus(`Switching to ${profileId}...`, false);
+
+    try {
+      const res = await fetch(`/api/switch_profile?id=${encodeURIComponent(profileId)}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      state.profileMeta = data.active_profile;
+
+      // Update UI title and brand
+      if (state.profileMeta) {
+        if (state.profileMeta.title) document.title = state.profileMeta.title;
+        if (elBrandLogo) elBrandLogo.textContent = state.profileMeta.brand?.logo || '⚡ Game';
+        if (elBrandVersion) elBrandVersion.textContent = state.profileMeta.brand?.version || '';
+        if (elPrefProfileName) elPrefProfileName.textContent = state.profileMeta.name || 'Default';
+        if (elPrefVariantName) elPrefVariantName.textContent = state.profileMeta.title || state.profileMeta.name;
+      }
+
+      // Reconnect websocket with clean terminal
+      if (state.ws) {
+        try { state.ws.close(); } catch (e) {}
+        state.ws = null;
+      }
+      if (state.term) {
+        state.term.reset();
+      }
+
+      connectWebSocket();
+      adjustTerminalScale();
+    } catch (err) {
+      alert(`Failed to switch profile: ${err.message}`);
+    }
+  }
+
+  function setupProfilesModal() {
+    if (elBrandProfileBtn) {
+      elBrandProfileBtn.addEventListener('click', openProfilesModal);
+    }
+    if (elBtnProfilesClose) elBtnProfilesClose.addEventListener('click', closeProfilesModal);
+    if (elBtnProfilesDone) elBtnProfilesDone.addEventListener('click', closeProfilesModal);
+    if (elProfilesModal) {
+      elProfilesModal.addEventListener('click', (e) => {
+        if (e.target === elProfilesModal) closeProfilesModal();
+      });
+    }
+  }
+
   // --- Terminal Initialization & Viewport Auto-Fitter ---
   function initTerminal() {
     const defaultCols = state.profileMeta?.geometry?.cols || 80;
@@ -822,8 +951,8 @@
     }
 
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const sessionId = state.profileMeta?.id || 'default';
-    const wsUrl = `${proto}//${window.location.host}/ws?session=${sessionId}`;
+    const profileId = state.profileMeta?.id || 'default';
+    const wsUrl = `${proto}//${window.location.host}/ws?session=${encodeURIComponent(profileId)}&profile=${encodeURIComponent(profileId)}`;
 
     updateStatus('Connecting...', false);
     const ws = new WebSocket(wsUrl);
@@ -1685,7 +1814,7 @@
             openPreferences();
             break;
           case 'open-profiles':
-            alert(`Active Profile: ${state.profileMeta?.name || 'Default'}\nVariant: ${state.profileMeta?.brand?.version || '2.3.8-ah'}`);
+            openProfilesModal();
             break;
           case 'quit-session':
             if (confirm('Restart game session?')) {
@@ -2222,6 +2351,7 @@ ${info.stderr || '(empty)'}
     setupButtonEditor();
     setupManageFbModal();
     setupPresetsModal();
+    setupProfilesModal();
     setupCrashModal();
     setupFloatingDpad();
     renderFloatingButtons();
