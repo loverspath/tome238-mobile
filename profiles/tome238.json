@@ -1,0 +1,29 @@
+{
+  "id": "tome238",
+  "name": "Tales of Middle-earth 2.3.8-ah",
+  "title": "ToME 2.3.8-ah Mobile Terminal",
+  "brand": {
+    "logo": "⚡ ToME",
+    "version": "2.3.8-ah"
+  },
+  "executable": "game/tome",
+  "args": ["-mgcu", "-MToME"],
+  "cwd": "game",
+  "env": {
+    "TERM": "xterm-256color",
+    "TOME_PATH": "lib",
+    "LANG": "en_US.UTF-8"
+  },
+  "geometry": {
+    "cols": 80,
+    "rows": 24
+  },
+  "redraw_key": "\u0012",
+  "keyboard_config": "keyboards.json",
+  "context_rules": [
+    {
+      "type": "yes_no",
+      "pattern": "\\((y\\/n|y\\/n\\/esc|\\[y\\/n\\])\\)"
+    }
+  ]
+}

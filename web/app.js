@@ -1,6 +1,7 @@
 /**
- * ToME 2.3.8-ah Mobile Web Client Controller
- * Native Port of Angbandroid AdvKeyboard.java, AdvButton.java, & OptionPopup
+ * Generic Mobile Web Terminal Client Controller
+ * Dynamically binds to declarative profile metadata (/api/profile)
+ * and faithfully implements Angbandroid AdvKeyboard system.
  */
 
 (function () {
@@ -31,6 +32,7 @@
     term: null,
     fitAddon: null,
     reconnectTimer: null,
+    profileMeta: null,
     dockMode: localStorage.getItem('tome_dock_mode') || 'docked', // 'docked' | 'overlap'
     keyboardsData: null,
     page: 0,
@@ -42,7 +44,7 @@
     longPressTimer: null,
     currentLongPressTarget: null,
     skipNextClick: false,
-    customKeymaps: {}, // { trigger: { action: string, alwaysVisible: boolean } }
+    customKeymaps: {},
     editingTrigger: null,
     lastCols: 80,
     lastRows: 24,
@@ -74,13 +76,12 @@
 
   const defaultDynamicRibbonHTML = elDynamicRibbon.innerHTML;
 
-  // --- Keymap Serialization (Angbandroid Format) ---
+  // --- Keymap Persistence ---
   function loadPersistedKeymaps() {
     const raw = localStorage.getItem('tome_adv_keymaps');
     state.customKeymaps = {};
     if (!raw) return;
 
-    // Format: trigger:prop:action:prop:alwaysVisible:sep:...
     const pairs = raw.split(':sep:');
     for (const pair of pairs) {
       const parts = pair.split(':prop:');
@@ -106,9 +107,12 @@
 
   // --- Terminal Initialization & Viewport Auto-Fitter ---
   function initTerminal() {
+    const defaultCols = state.profileMeta?.geometry?.cols || 80;
+    const defaultRows = state.profileMeta?.geometry?.rows || 24;
+
     const term = new Terminal({
-      cols: 80,
-      rows: 24,
+      cols: defaultCols,
+      rows: defaultRows,
       cursorBlink: false,
       fontFamily: '"DejaVu Sans Mono", "Courier New", monospace',
       fontSize: 13,
@@ -146,6 +150,8 @@
 
     state.term = term;
     state.fitAddon = fitAddon;
+    state.lastCols = defaultCols;
+    state.lastRows = defaultRows;
 
     const resizeObserver = new ResizeObserver(() => {
       adjustTerminalScale();
@@ -176,12 +182,14 @@
     const isPortrait = window.innerHeight > window.innerWidth;
     const charAspect = 0.58;
     const lineHeight = 1.15;
+    const targetCols = state.profileMeta?.geometry?.cols || 80;
+    const targetRows = state.profileMeta?.geometry?.rows || 24;
 
     let optimalFontSize;
     if (isPortrait) {
-      optimalFontSize = Math.floor(cw / (80 * charAspect));
+      optimalFontSize = Math.floor(cw / (targetCols * charAspect));
     } else {
-      optimalFontSize = Math.floor(ch / (24 * lineHeight));
+      optimalFontSize = Math.floor(ch / (targetRows * lineHeight));
     }
 
     optimalFontSize = Math.max(8, Math.min(28, optimalFontSize));
@@ -194,8 +202,8 @@
       state.fitAddon.fit();
     } catch (e) {}
 
-    const cols = Math.max(80, state.term.cols || 80);
-    const rows = Math.max(24, state.term.rows || 24);
+    const cols = Math.max(targetCols, state.term.cols || targetCols);
+    const rows = Math.max(targetRows, state.term.rows || targetRows);
     if (cols !== state.lastCols || rows !== state.lastRows) {
       state.lastCols = cols;
       state.lastRows = rows;
@@ -210,7 +218,8 @@
     }
 
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${proto}//${window.location.host}/ws?session=tome_default`;
+    const sessionId = state.profileMeta?.id || 'default';
+    const wsUrl = `${proto}//${window.location.host}/ws?session=${sessionId}`;
 
     updateStatus('Connecting...', false);
     const ws = new WebSocket(wsUrl);
@@ -229,7 +238,7 @@
           try {
             const msg = JSON.parse(event.data);
             if (msg.type === 'exit') {
-              state.term.write('\r\n\x1b[33m[Game process exited. Tap ↺ to restart.]\x1b[0m\r\n');
+              state.term.write('\r\n\x1b[33m[Session process exited. Tap ↺ to restart.]\x1b[0m\r\n');
               return;
             }
           } catch (e) {}
@@ -287,7 +296,7 @@
     }
   }
 
-  // --- Angbandroid Input Resolution Engine (InputUtils.java) ---
+  // --- Input Resolution Engine ---
   function parseActionString(txt) {
     const result = [];
     let i = 0;
@@ -298,17 +307,16 @@
       const next = (i + 1 < n) ? txt.charAt(i + 1) : '';
 
       if (ch0 === '^' && /[a-zA-Z]/.test(next)) {
-        // Control sequence: ^A -> \x01, ^Z -> \x1a
         const code = next.toUpperCase().charCodeAt(0) - 64;
         result.push(String.fromCharCode(code));
         i += 2;
       } else if (ch0 === '\\') {
         switch (next.toLowerCase()) {
-          case 'n': result.push('\r'); break; // Enter
-          case 'e': result.push('\x1b'); break; // Escape
-          case 't': result.push('\t'); break;   // Tab
-          case 's': result.push(' '); break;    // Space
-          case 'b': result.push('\x7f'); break;  // BackSpace
+          case 'n': result.push('\r'); break;
+          case 'e': result.push('\x1b'); break;
+          case 't': result.push('\t'); break;
+          case 's': result.push(' '); break;
+          case 'b': result.push('\x7f'); break;
           default: result.push(next); break;
         }
         i += 2;
@@ -323,7 +331,6 @@
   function processAction(action) {
     const parsed = parseActionString(action);
 
-    // If runningMode is on and it's a direction digit 1-9
     if (state.runningMode && parsed.length === 1 && parsed >= '1' && parsed <= '9') {
       sendRaw('.' + parsed);
       return;
@@ -333,7 +340,6 @@
   }
 
   // --- Angbandroid AdvKeyboard Native Engine ---
-
   function changeShiftMode() {
     state.shiftMode = (state.shiftMode + 1) % 3;
     updateStatusIndicators();
@@ -397,7 +403,6 @@
   }
 
   function updateStatusIndicators() {
-    // Shift indicator
     if (state.shiftMode === 0) {
       elIndShift.textContent = 'a-z';
       elIndShift.className = 'status-pill';
@@ -409,11 +414,9 @@
       elIndShift.className = 'status-pill mode-ctrl';
     }
 
-    // Lock indicator
     elIndLock.classList.toggle('hidden-pill', !state.locked);
     if (state.locked) elIndLock.className = 'status-pill mode-active';
 
-    // Run indicator
     elIndRun.classList.toggle('hidden-pill', !state.runningMode);
     if (state.runningMode) elIndRun.className = 'status-pill mode-run';
   }
@@ -457,7 +460,6 @@
     });
   }
 
-  // --- Button Execution Dispatcher (AdvButton.java execute) ---
   function executeButton(defaultValue) {
     haptic();
 
@@ -496,7 +498,6 @@
       return;
     }
 
-    // Check custom keymap
     if (state.keymapMode && state.customKeymaps[defaultValue]) {
       const custom = state.customKeymaps[defaultValue];
       if (custom && custom.action) {
@@ -507,7 +508,6 @@
       }
     }
 
-    // Check function keys / special ANSI
     if (FUNCTION_KEY_ANSI[defaultValue]) {
       sendRaw(FUNCTION_KEY_ANSI[defaultValue]);
       exitShiftMode();
@@ -515,7 +515,6 @@
       return;
     }
 
-    // Normal active value
     const activeValue = getActiveButtonValue(defaultValue);
     processAction(activeValue);
 
@@ -523,7 +522,7 @@
     resetPage();
   }
 
-  // --- Render AdvKeyboard Layout from keyboards.json ---
+  // --- Render Layout from keyboards.json ---
   function renderKeyboard() {
     if (!state.keyboardsData) return;
 
@@ -566,17 +565,15 @@
     adjustTerminalScale();
   }
 
-  // --- Touch & Long-Press Handling (AdvKeyboard onTouch + OptionPopup trigger) ---
   function bindAdvButtonTouch(btn, defaultValue) {
     const neverKeymap = ['◧', '⏎', '⎋', '⇧', '+/-', 'abc', 'kmp', 'lck', '▤'];
 
-    const onPointerDown = (e) => {
+    const onPointerDown = () => {
       btn.classList.add('pressed');
       state.skipNextClick = false;
       state.currentLongPressTarget = defaultValue;
 
       clearTimeout(state.longPressTimer);
-      // 1000ms Long Press -> OptionPopup
       if (!neverKeymap.includes(defaultValue)) {
         state.longPressTimer = setTimeout(() => {
           state.skipNextClick = true;
@@ -586,7 +583,7 @@
       }
     };
 
-    const onPointerUp = (e) => {
+    const onPointerUp = () => {
       clearTimeout(state.longPressTimer);
       btn.classList.remove('pressed');
 
@@ -595,7 +592,6 @@
         return;
       }
 
-      // If in keymap mode, open editor instead of executing
       if (state.keymapMode && !neverKeymap.includes(defaultValue)) {
         openOptionPopup(defaultValue);
         return;
@@ -616,7 +612,7 @@
     btn.addEventListener('pointerleave', onPointerCancel);
   }
 
-  // --- Angbandroid OptionPopup Modal Dialog Controller ---
+  // --- OptionPopup Modal Dialog Controller ---
   function openOptionPopup(trigger) {
     haptic();
     state.editingTrigger = trigger;
@@ -636,7 +632,6 @@
   }
 
   function setupOptionPopup() {
-    // Quick insert buttons
     const insertButtons = elModal.querySelectorAll('.quick-insert-btn');
     insertButtons.forEach(b => {
       b.addEventListener('click', () => {
@@ -647,7 +642,6 @@
       });
     });
 
-    // Save button
     elBtnSave.addEventListener('click', () => {
       haptic();
       const trigger = state.editingTrigger;
@@ -667,7 +661,6 @@
       renderKeyboard();
     });
 
-    // Clear button
     elBtnClear.addEventListener('click', () => {
       haptic();
       const trigger = state.editingTrigger;
@@ -679,12 +672,10 @@
       renderKeyboard();
     });
 
-    // Cancel button
     elBtnCancel.addEventListener('click', () => {
       closeOptionPopup();
     });
 
-    // Close on overlay backdrop tap
     elModal.addEventListener('click', (e) => {
       if (e.target === elModal) {
         closeOptionPopup();
@@ -692,22 +683,33 @@
     });
   }
 
-  // --- Context Sniffer ---
+  // --- Declarative Context Sniffer (Context Rules from Profile) ---
   let contextMode = 'normal';
 
   function inspectScreenForContext(chunk) {
     state.recentScreenText = (state.recentScreenText + chunk).slice(-500);
 
-    const isYesNo = /\((y\/n|y\/n\/esc|\[y\/n\])\)/i.test(state.recentScreenText);
+    const rules = state.profileMeta?.context_rules || [
+      { type: 'yes_no', pattern: '\\((y\\/n|y\\/n\\/esc|\\[y\\/n\\])\\)' }
+    ];
 
-    if (isYesNo && contextMode !== 'yes_no') {
+    let matchedRule = null;
+    for (const rule of rules) {
+      const reg = new RegExp(rule.pattern, 'i');
+      if (reg.test(state.recentScreenText)) {
+        matchedRule = rule;
+        break;
+      }
+    }
+
+    if (matchedRule && matchedRule.type === 'yes_no' && contextMode !== 'yes_no') {
       contextMode = 'yes_no';
       elDynamicRibbon.innerHTML = `
         <button class="ribbon-btn esc-btn" data-key="\\e">⎋ Esc</button>
         <button class="ribbon-btn" style="background:#ef4444;color:#fff;" data-key="n">✖ No (n)</button>
-        <button class="ribbon-btn" style="background:#10b981;color:#fff;" data-key="y">✔ Yes (y)</button>
+        <button class="ribbon-btn" style="background:#86bf36;color:#000;" data-key="y">✔ Yes (y)</button>
       `;
-    } else if (!isYesNo && contextMode === 'yes_no') {
+    } else if (!matchedRule && contextMode === 'yes_no') {
       contextMode = 'normal';
       elDynamicRibbon.innerHTML = defaultDynamicRibbonHTML;
     }
@@ -743,7 +745,6 @@
       }
     });
 
-    // Delegated click for Ribbon buttons
     document.addEventListener('click', (e) => {
       const keyBtn = e.target.closest('[data-key]');
       if (keyBtn) {
@@ -754,13 +755,37 @@
     });
   }
 
-  // --- Fetch keyboards.json and Startup ---
-  async function loadKeyboardsAndInit() {
+  // --- Dynamic Profile Binding & App Startup ---
+  async function loadProfileAndInit() {
     try {
-      const res = await fetch('keyboards.json');
-      state.keyboardsData = await res.json();
+      const res = await fetch('/api/profile');
+      if (res.ok) {
+        state.profileMeta = await res.json();
+      }
     } catch (err) {
-      console.error('Failed to load keyboards.json:', err);
+      console.warn('Could not fetch /api/profile, using fallback metadata:', err);
+    }
+
+    // Bind metadata to DOM
+    if (state.profileMeta) {
+      if (state.profileMeta.title) {
+        document.title = state.profileMeta.title;
+      }
+      if (state.profileMeta.brand) {
+        const logoEl = document.querySelector('#top-bar .brand .logo');
+        const verEl = document.querySelector('#top-bar .brand .version');
+        if (logoEl && state.profileMeta.brand.logo) logoEl.textContent = state.profileMeta.brand.logo;
+        if (verEl && state.profileMeta.brand.version) verEl.textContent = state.profileMeta.brand.version;
+      }
+    }
+
+    // Load keyboard config
+    const kbdConfigPath = state.profileMeta?.keyboard_config || 'keyboards.json';
+    try {
+      const kbdRes = await fetch(kbdConfigPath);
+      state.keyboardsData = await kbdRes.json();
+    } catch (err) {
+      console.error('Failed to load keyboard configuration:', err);
     }
 
     loadPersistedKeymaps();
@@ -773,7 +798,7 @@
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    loadKeyboardsAndInit();
+    loadProfileAndInit();
   });
 
 })();

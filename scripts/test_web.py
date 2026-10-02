@@ -24,6 +24,8 @@ def check_http():
         ("/", "text/html"),
         ("/style.css", "text/css"),
         ("/app.js", "application/javascript"),
+        ("/api/profile", "application/json"),
+        ("/keyboards.json", "application/json"),
         ("/vendor/xterm.js", "application/javascript"),
         ("/vendor/xterm.css", "text/css")
     ]

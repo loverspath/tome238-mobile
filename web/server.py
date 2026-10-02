@@ -1,7 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/python3
 """
-ToME 2.3.8-ah PTY <-> WebSocket Bridge Server
-Serves static web files and provides bidirectional terminal streaming over WebSocket.
+Declarative Mobile Web Terminal PTY Host & Bridge Server
+Serves static web files, exposes profile metadata (/api/profile),
+and provides bidirectional terminal streaming over WebSocket.
 """
 
 import argparse
@@ -25,16 +26,47 @@ from websockets.datastructures import Headers
 from websockets.http11 import Request, Response
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-GAME_DIR = os.path.join(PROJECT_ROOT, "game")
-GAME_BIN = os.path.join(GAME_DIR, "tome")
-GAME_LIB = os.path.join(GAME_DIR, "lib")
 STATIC_DIR = os.path.join(PROJECT_ROOT, "web")
+DEFAULT_PROFILE_PATH = os.path.join(PROJECT_ROOT, "profiles", "tome238.json")
+
+ACTIVE_PROFILE = {}
+ACTIVE_PROFILE_RAW_JSON = b"{}"
+
+
+def resolve_path(path: str, base_dir: str = PROJECT_ROOT) -> str:
+    if os.path.isabs(path):
+        return path
+    return os.path.normpath(os.path.join(base_dir, path))
+
+
+def load_profile(profile_path: str) -> dict:
+    global ACTIVE_PROFILE, ACTIVE_PROFILE_RAW_JSON
+    abs_path = resolve_path(profile_path)
+    if not os.path.isfile(abs_path):
+        raise FileNotFoundError(f"Profile configuration file not found at: {abs_path}")
+
+    with open(abs_path, "r", encoding="utf-8") as f:
+        profile_data = json.load(f)
+
+    # Resolve executable and cwd relative to PROJECT_ROOT
+    if "executable" in profile_data:
+        profile_data["resolved_executable"] = resolve_path(profile_data["executable"])
+    if "cwd" in profile_data:
+        profile_data["resolved_cwd"] = resolve_path(profile_data["cwd"])
+    else:
+        profile_data["resolved_cwd"] = PROJECT_ROOT
+
+    ACTIVE_PROFILE = profile_data
+    ACTIVE_PROFILE_RAW_JSON = json.dumps(profile_data, ensure_ascii=False).encode("utf-8")
+    return profile_data
+
 
 class PtySession:
-    def __init__(self, session_id: str, cmd: list, env: dict, cols: int = 80, rows: int = 24):
+    def __init__(self, session_id: str, cmd: list, env: dict, cwd: str, cols: int = 80, rows: int = 24):
         self.session_id = session_id
         self.cmd = cmd
         self.env = env
+        self.cwd = cwd
         self.cols = cols
         self.rows = rows
         self.master_fd = None
@@ -59,7 +91,7 @@ class PtySession:
             os.dup2(slave_fd, 2)
             os.close(slave_fd)
 
-            os.chdir(GAME_DIR)
+            os.chdir(self.cwd)
             os.execvpe(self.cmd[0], self.cmd, self.env)
 
         # Parent process
@@ -67,11 +99,9 @@ class PtySession:
         self.child_pid = pid
         self.is_alive = True
 
-        # Make master non-blocking
         flags = fcntl.fcntl(self.master_fd, fcntl.F_GETFL)
         fcntl.fcntl(self.master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
-        # Register event loop reader
         self.loop.add_reader(self.master_fd, self._on_pty_read)
 
     def _set_winsize(self, cols: int, rows: int, fd: int = None):
@@ -110,12 +140,10 @@ class PtySession:
                 self._handle_exit()
                 return
 
-            # Keep recent buffer for client reconnections
             self.recent_buffer.extend(data)
             if len(self.recent_buffer) > self.max_buffer_size:
                 self.recent_buffer = self.recent_buffer[-self.max_buffer_size:]
 
-            # Broadcast to connected WebSocket clients
             for ws in list(self.clients):
                 try:
                     asyncio.create_task(ws.send(data))
@@ -144,7 +172,6 @@ class PtySession:
             except OSError:
                 pass
 
-        # Notify clients of exit
         exit_msg = json.dumps({"type": "exit"}).encode("utf-8")
         for ws in list(self.clients):
             try:
@@ -165,18 +192,34 @@ class PtySession:
 
 active_sessions = {}
 
+
 def get_or_create_session(session_id: str) -> PtySession:
     sess = active_sessions.get(session_id)
     if sess and sess.is_alive:
         return sess
 
-    env = os.environ.copy()
-    env["TERM"] = "xterm-256color"
-    env["TOME_PATH"] = GAME_LIB
-    env["LANG"] = "en_US.UTF-8"
+    executable = ACTIVE_PROFILE.get("resolved_executable")
+    if not executable or not os.path.isfile(executable):
+        raise FileNotFoundError(f"Target executable not found: {executable}")
 
-    cmd = [GAME_BIN, "-mgcu", "-MToME"]
-    sess = PtySession(session_id, cmd, env)
+    args = ACTIVE_PROFILE.get("args", [])
+    cmd = [executable] + list(args)
+
+    cwd = ACTIVE_PROFILE.get("resolved_cwd", PROJECT_ROOT)
+
+    env = os.environ.copy()
+    profile_env = ACTIVE_PROFILE.get("env", {})
+    for k, v in profile_env.items():
+        if k == "TOME_PATH" and not os.path.isabs(v):
+            env[k] = resolve_path(v, cwd)
+        else:
+            env[k] = str(v)
+
+    geometry = ACTIVE_PROFILE.get("geometry", {})
+    cols = geometry.get("cols", 80)
+    rows = geometry.get("rows", 24)
+
+    sess = PtySession(session_id, cmd, env, cwd, cols=cols, rows=rows)
     sess.start()
     active_sessions[session_id] = sess
     return sess
@@ -187,8 +230,16 @@ def process_http_request(connection: ServerConnection, request: Request):
     path = parsed.path
 
     if path == "/ws":
-        # Upgrade to WebSocket
         return None
+
+    # Expose current profile configuration to frontend client
+    if path == "/api/profile":
+        headers = Headers([
+            ("Content-Type", "application/json; charset=utf-8"),
+            ("Content-Length", str(len(ACTIVE_PROFILE_RAW_JSON))),
+            ("Cache-Control", "no-cache")
+        ])
+        return Response(200, "OK", headers, ACTIVE_PROFILE_RAW_JSON)
 
     # Handle static files
     if path == "/" or path == "":
@@ -196,7 +247,6 @@ def process_http_request(connection: ServerConnection, request: Request):
     else:
         rel_path = path.lstrip("/")
 
-    # Security check: avoid directory traversal
     file_path = os.path.normpath(os.path.join(STATIC_DIR, rel_path))
     if not file_path.startswith(STATIC_DIR):
         return Response(403, "Forbidden", Headers([("Content-Type", "text/plain")]), b"403 Forbidden")
@@ -212,7 +262,7 @@ def process_http_request(connection: ServerConnection, request: Request):
         with open(file_path, "rb") as f:
             content = f.read()
         headers = Headers([
-            ("Content-Type", f"{mime_type}; charset=utf-8" if "text" in mime_type or "javascript" in mime_type else mime_type),
+            ("Content-Type", f"{mime_type}; charset=utf-8" if "text" in mime_type or "javascript" in mime_type or "json" in mime_type else mime_type),
             ("Content-Length", str(len(content))),
             ("Cache-Control", "no-cache")
         ])
@@ -233,12 +283,13 @@ async def ws_handler(websocket: ServerConnection):
     session.clients.add(websocket)
 
     try:
-        # Send initial screen buffer if reconnecting
         if session.recent_buffer:
             await websocket.send(bytes(session.recent_buffer))
 
-        # Redraw screen
-        session.write_input(b"\x12") # Ctrl+R
+        # Redraw screen using profile's redraw_key
+        redraw_str = ACTIVE_PROFILE.get("redraw_key", "\x12")
+        if redraw_str:
+            session.write_input(redraw_str.encode("utf-8"))
 
         async for message in websocket:
             if isinstance(message, bytes):
@@ -267,7 +318,6 @@ async def ws_handler(websocket: ServerConnection):
         pass
     finally:
         session.clients.discard(websocket)
-        # If no clients left, schedule cleanup after 300 seconds
         if not session.clients:
             async def delayed_cleanup():
                 await asyncio.sleep(300)
@@ -277,20 +327,25 @@ async def ws_handler(websocket: ServerConnection):
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="ToME 2.3.8 Mobile Web Server")
+    parser = argparse.ArgumentParser(description="Generic Mobile Web Terminal Bridge Server")
     parser.add_argument("--host", default="0.0.0.0", help="Listen host (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8080, help="Listen port (default: 8080)")
+    parser.add_argument("--profile", default=DEFAULT_PROFILE_PATH, help=f"Path to profile json (default: {DEFAULT_PROFILE_PATH})")
     args = parser.parse_args()
 
-    # Pre-check binary
-    if not os.path.isfile(GAME_BIN):
-        print(f"Error: Game binary not found at {GAME_BIN}. Please run ./scripts/build.sh first.")
+    # Load and validate profile
+    try:
+        profile = load_profile(args.profile)
+    except Exception as e:
+        print(f"Error loading profile: {e}")
         sys.exit(1)
 
     print(f"==================================================")
-    print(f" ToME 2.3.8-ah Mobile Web Terminal Server")
-    print(f" Listening on http://{args.host}:{args.port}")
-    print(f" Game Binary: {GAME_BIN}")
+    print(f" Mobile Web Terminal PTY Bridge Server")
+    print(f" Profile:     {profile.get('name')} ({profile.get('id')})")
+    print(f" Executable:  {profile.get('resolved_executable')}")
+    print(f" Working Dir: {profile.get('resolved_cwd')}")
+    print(f" Listening:   http://{args.host}:{args.port}")
     print(f" Static Dir:  {STATIC_DIR}")
     print(f"==================================================")
 

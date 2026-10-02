@@ -5,6 +5,7 @@
 game/src/tome
 game/src/tolua
 game/tome
+scripts/portability_demo
 tolua
 tome
 
