@@ -6,29 +6,32 @@ echo "=========================================="
 echo " Running Full ToME Test Suite"
 echo "=========================================="
 
-echo -e "\n[1/8] Running Native CLI Smoke Test..."
+echo -e "\n[1/9] Running Native CLI Smoke Test..."
 "$DIR/scripts/test.sh"
 
-echo -e "\n[2/8] Running Character Creation & Birth Sequence Regression Test..."
+echo -e "\n[2/9] Running Character Creation & Birth Sequence Regression Test..."
 python3 "$DIR/scripts/test_birth.py"
 
-echo -e "\n[3/8] Running Web & WebSocket Integration Test (ToME Profile)..."
+echo -e "\n[3/9] Running Web & WebSocket Integration Test (ToME Profile)..."
 python3 "$DIR/scripts/test_web.py"
 
-echo -e "\n[4/8] Running Decoupled Portability Proof Test (Portability Demo Profile)..."
+echo -e "\n[4/9] Running Decoupled Portability Proof Test (Portability Demo Profile)..."
 python3 "$DIR/scripts/test_portability.py"
 
-echo -e "\n[5/8] Running Crash Detection & Error Pipeline Test..."
+echo -e "\n[5/9] Running Crash Detection & Error Pipeline Test..."
 python3 "$DIR/scripts/test_crash_pipeline.py"
 
-echo -e "\n[6/8] Running In-Game Ctrl+S Save & Flow Control Regression Test..."
+echo -e "\n[6/9] Running In-Game Ctrl+S Save & Flow Control Regression Test..."
 python3 "$DIR/scripts/test_ctrl_s.py"
 
-echo -e "\n[7/8] Running PRF (Macro/Options) & Hall of Fame Persistence Test..."
+echo -e "\n[7/9] Running PRF (Macro/Options) & Hall of Fame Persistence Test..."
 python3 "$DIR/scripts/test_persistence.py"
 
-echo -e "\n[8/8] Running Runecraft Magic Engine & Mkey Integration Test..."
+echo -e "\n[8/9] Running Runecraft Magic Engine & Mkey Integration Test..."
 python3 "$DIR/scripts/test_runecraft.py"
+
+echo -e "\n[9/9] Running Polymath Class & Universal Skills Integration Test..."
+python3 "$DIR/scripts/test_polymath.py"
 
 echo -e "\n=========================================="
 echo " ALL TESTS PASSED!"

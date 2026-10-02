@@ -872,6 +872,94 @@ C:a:O:105:3:1d1
 C:a:O:111:50:1d1
 ###############################ADVENTURER###############################
 
+###############################POLYMATH###############################
+C:N:7:Polymath
+C:D:0:A master of all arts, disciplines, and sciences, capable of learning any skill in Middle-earth.
+C:D:1:Student
+C:D:1:Scholar
+C:D:1:Polymath
+C:D:1:Savant
+C:D:1:Master Polymath
+C:D:1:Grand Polymath
+C:D:1:Omniscient
+C:S:1:1:1:1:1:1:40:0
+C:K:15:15:10:2:12:12:15:15
+C:X:0:0:0:0:0:0:0:0
+C:B:4:40:2
+C:C:L:L:200000:1:5
+C:P:4:30
+C:E:0:0:0:0:0:0
+C:b:1:Perfect casting
+C:g:All Gods
+C:k:+1000:+1100:Combat
+C:k:+1000:+1000:Weaponmastery
+C:k:+1000:+1000:Archery
+C:k:+1000:+1000:Sneakiness
+C:k:+1000:+1000:Disarming
+C:k:+1000:+1200:Magic
+C:k:+1000:+1000:Magic-Device
+C:k:+1000:+1100:Mana
+C:k:+2000:+1100:Runecraft
+C:k:+1000:+1000:Thaumaturgy
+C:k:+1000:+1000:Alchemy
+C:k:+1000:+1000:Spirituality
+C:k:+1000:+1000:Monster-lore
+C:k:+0:+1000:Sword-mastery
+C:k:+0:+1000:Critical-hits
+C:k:+0:+1000:Axe-mastery
+C:k:+0:+1000:Hafted-mastery
+C:k:+0:+1000:Stunning-blows
+C:k:+0:+1000:Polearm-mastery
+C:k:+0:+1000:Sling-mastery
+C:k:+0:+1000:Bow-mastery
+C:k:+0:+1000:Crossbow-mastery
+C:k:+0:+1000:Boomerang-mastery
+C:k:+0:+1000:Barehand-combat
+C:k:+0:+1000:Boulder-throwing
+C:k:+0:+1000:Stealth
+C:k:+0:+1000:Backstab
+C:k:+0:+1000:Stealing
+C:k:+0:+1000:Dodging
+C:k:+0:+1000:Spell-power
+C:k:+0:+1000:Sorcery
+C:k:+0:+1000:Geomancy
+C:k:+0:+1000:Fire
+C:k:+0:+1000:Water
+C:k:+0:+1000:Air
+C:k:+0:+1000:Earth
+C:k:+0:+1000:Meta
+C:k:+0:+1000:Conveyance
+C:k:+0:+1000:Divination
+C:k:+0:+1000:Temporal
+C:k:+0:+1000:Mind
+C:k:+0:+1000:Nature
+C:k:+0:+1000:Necromancy
+C:k:+0:+1000:Demonology
+C:k:+0:+800:Udun
+C:k:+0:+1000:Prayer
+C:k:+0:+1000:Mindcraft
+C:k:+0:+1000:Music
+C:k:+0:+1000:Summoning
+C:k:+0:+1000:Corpse-preservation
+C:k:+0:+1000:Possession
+C:k:+0:+1000:Symbiosis
+C:k:+0:+1000:Mimicry
+
+C:a:N:Polymath
+C:a:D:A versatile polymath trained across every martial, arcane, spiritual, and natural discipline.
+C:a:g:All Gods
+C:a:O:71:22:1d1
+C:a:O:71:12:1d1
+C:a:O:23:4:1d1
+C:a:O:36:2:1d1
+C:a:O:39:1:1d1
+C:a:O:80:16:1d1
+C:a:O:104:5:1d1
+C:a:O:104:1:1d1
+C:a:O:105:1:1d1
+C:a:O:111:50:1d1
+###############################POLYMATH###############################
+
 ###############################TEST###############################
 C:N:30:Test
 C:D:0:Simple testers.
@@ -948,7 +1036,7 @@ R:K:0:0:0:0:0:10:0:0
 R:P:10:100:0:1
 R:M:14:6:72:6:180:25:66:4:150:20
 R:E:1:1:1:2:1:1
-R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster | Adventurer
+R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster | Adventurer | Polymath
 
 R:N:1:Half-Elf
 R:D:A crossbreed of elf and human, they get the best of the two races.
@@ -957,7 +1045,7 @@ R:K:2:3:3:1:6:11:-1:5
 R:P:9:110:2:4
 R:M:24:16:66:6:130:15:62:6:100:10
 R:E:1:1:1:2:1:1
-R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster | Adventurer
+R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster | Adventurer | Polymath
 R:G:ELF
 R:k:+200:+000:Disarming
 R:k:+300:+000:Magic-Device
@@ -978,7 +1066,7 @@ R:M:75:75:60:4:100:6:54:4:80:6
 R:E:1:1:1:2:1:1
 R:R:1:0
 R:F:RES_LITE | 
-R:C:Warrior | Archer | Mage | Priest | Loremaster | Adventurer
+R:C:Warrior | Archer | Mage | Priest | Loremaster | Adventurer | Polymath
 R:G:ELF
 R:k:+500:+000:Disarming
 R:k:+600:+000:Magic-Device
@@ -1000,7 +1088,7 @@ R:Z:create food
 R:G:RESIST_BLACK_BREATH | XTRA_MIGHT_SLING |
 R:R:1:0
 R:F:SUST_DEX | 
-R:C:Warrior | Archer | Mage | Rogue | Loremaster | Adventurer
+R:C:Warrior | Archer | Mage | Rogue | Loremaster | Adventurer | Polymath
 R:k:+0:+300:Sling-mastery
 R:k:+1500:+000:Disarming
 R:k:+1800:+000:Magic-Device
@@ -1021,7 +1109,7 @@ R:E:1:1:1:2:1:1
 R:Z:blink
 R:R:1:0
 R:F:FREE_ACT | 
-R:C:Warrior | Mage | Rogue | Adventurer
+R:C:Warrior | Mage | Rogue | Adventurer | Polymath
 R:k:+1000:+000:Disarming
 R:k:+1200:+000:Magic-Device
 R:k:+6000:+000:Spirituality
@@ -1041,7 +1129,7 @@ R:E:1:1:1:2:1:1
 R:Z:find secret passages
 R:R:1:0
 R:F:RES_BLIND | 
-R:C:Warrior | Priest | Adventurer
+R:C:Warrior | Priest | Adventurer | Polymath
 R:k:+0:+200:Axe-mastery
 R:k:+200:+000:Disarming
 R:k:+900:+000:Magic-Device
@@ -1102,7 +1190,7 @@ R:M:50:50:82:5:190:20:78:6:180:15
 R:E:1:1:1:2:1:1
 R:R:1:0
 R:F:SUST_CON | REGEN | 
-R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster
+R:C:Warrior | Archer | Mage | Rogue | Priest | Loremaster | Polymath
 R:k:+400:+000:Disarming
 R:k:+500:+000:Magic-Device
 R:k:+2500:+000:Spirituality
@@ -1124,7 +1212,7 @@ R:R:1:0
 R:F:SEE_INVIS | 
 R:F:RES_LITE | 
 R:G:ELF
-R:C:Warrior | Archer | Mage | Priest | Loremaster
+R:C:Warrior | Archer | Mage | Priest | Loremaster | Polymath
 R:k:+400:+000:Disarming
 R:k:+2000:+000:Magic-Device
 R:k:+10000:+000:Spirituality
@@ -2025,6 +2113,7 @@ M:C:Mage
 M:C:Priest
 M:C:Loremaster
 M:C:Adventurer
+M:C:Polymath
 #M:C:Test
 #M:C:Chaos-Warrior
 

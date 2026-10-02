@@ -1174,11 +1174,11 @@ struct player_race
 	char skill_modm[MAX_SKILLS];
 	s16b skill_mod[MAX_SKILLS];
 
-	s16b obj_tval[5];
-	s16b obj_sval[5];
-	s16b obj_pval[5];
-	s16b obj_dd[5];
-	s16b obj_ds[5];
+	s16b obj_tval[20];
+	s16b obj_sval[20];
+	s16b obj_pval[20];
+	s16b obj_dd[20];
+	s16b obj_ds[20];
 	s16b obj_num;
 
 	struct
@@ -1256,11 +1256,11 @@ struct player_race_mod
 	char skill_modm[MAX_SKILLS];
 	s16b skill_mod[MAX_SKILLS];
 
-	s16b obj_tval[5];
-	s16b obj_sval[5];
-	s16b obj_pval[5];
-	s16b obj_dd[5];
-	s16b obj_ds[5];
+	s16b obj_tval[20];
+	s16b obj_sval[20];
+	s16b obj_pval[20];
+	s16b obj_dd[20];
+	s16b obj_ds[20];
 	s16b obj_num;
 
 	struct
@@ -1289,11 +1289,11 @@ struct player_spec
 
 	u32b skill_ideal[MAX_SKILLS];   /* Ideal skill levels at level 50 */
 
-	s16b obj_tval[5];
-	s16b obj_sval[5];
-	s16b obj_pval[5];
-	s16b obj_dd[5];
-	s16b obj_ds[5];
+	s16b obj_tval[20];
+	s16b obj_sval[20];
+	s16b obj_pval[20];
+	s16b obj_dd[20];
+	s16b obj_ds[20];
 	s16b obj_num;
 
 	u32b gods;
@@ -1366,11 +1366,11 @@ struct player_class
 	byte sense_heavy;
 	byte sense_heavy_magic;
 
-	s16b obj_tval[5];
-	s16b obj_sval[5];
-	s16b obj_pval[5];
-	s16b obj_dd[5];
-	s16b obj_ds[5];
+	s16b obj_tval[20];
+	s16b obj_sval[20];
+	s16b obj_pval[20];
+	s16b obj_dd[20];
+	s16b obj_ds[20];
 	s16b obj_num;
 
 	char body_parts[BODY_MAX];      /* To help to decide what to use when body changing */

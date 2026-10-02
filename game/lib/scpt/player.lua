@@ -63,7 +63,7 @@ function __birth_hook_objects()
 		inven_carry(obj, FALSE)
 		end_object(obj)
 	end
-	if get_class_name() == "Adventurer" then
+	if get_class_name() == "Adventurer" or get_class_name() == "Polymath" then
 		local obj = create_object(TV_BOOK, 255);
 		obj.pval = find_spell("Manathrust")
 		obj.ident = bor(obj.ident, IDENT_MENTAL, IDENT_KNOWN)

@@ -2824,11 +2824,14 @@ errr init_player_info_txt(FILE *fp, char *buf)
 				}
 			}
 
-			c_ptr->obj_pval[c_ptr->obj_num] = s[4];
-			c_ptr->obj_tval[c_ptr->obj_num] = s[0];
-			c_ptr->obj_sval[c_ptr->obj_num] = s[1];
-			c_ptr->obj_dd[c_ptr->obj_num] = s[2];
-			c_ptr->obj_ds[c_ptr->obj_num++] = s[3];
+			if (c_ptr->obj_num < 20)
+			{
+				c_ptr->obj_pval[c_ptr->obj_num] = s[4];
+				c_ptr->obj_tval[c_ptr->obj_num] = s[0];
+				c_ptr->obj_sval[c_ptr->obj_num] = s[1];
+				c_ptr->obj_dd[c_ptr->obj_num] = s[2];
+				c_ptr->obj_ds[c_ptr->obj_num++] = s[3];
+			}
 
 			/* Next... */
 			continue;
@@ -3210,11 +3213,14 @@ errr init_player_info_txt(FILE *fp, char *buf)
 					}
 				}
 
-				s_ptr->obj_pval[s_ptr->obj_num] = s[4];
-				s_ptr->obj_tval[s_ptr->obj_num] = s[0];
-				s_ptr->obj_sval[s_ptr->obj_num] = s[1];
-				s_ptr->obj_dd[s_ptr->obj_num] = s[2];
-				s_ptr->obj_ds[s_ptr->obj_num++] = s[3];
+				if (s_ptr->obj_num < 20)
+				{
+					s_ptr->obj_pval[s_ptr->obj_num] = s[4];
+					s_ptr->obj_tval[s_ptr->obj_num] = s[0];
+					s_ptr->obj_sval[s_ptr->obj_num] = s[1];
+					s_ptr->obj_dd[s_ptr->obj_num] = s[2];
+					s_ptr->obj_ds[s_ptr->obj_num++] = s[3];
+				}
 
 				/* Next... */
 				continue;
