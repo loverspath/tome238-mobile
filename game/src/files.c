@@ -6582,8 +6582,15 @@ void close_game(void)
  */
 void exit_game_panic(void)
 {
+	fprintf(stderr, "[ENGINE PANIC] exit_game_panic() called! (character_generated=%d, savefile='%s')\n",
+	        character_generated, savefile);
+
 	/* If nothing important has happened, just quit */
-	if (!character_generated || character_saved) quit("panic");
+	if (!character_generated || character_saved)
+	{
+		fprintf(stderr, "[ENGINE PANIC] Nothing to save, exiting.\n");
+		quit("+0");
+	}
 
 	/* Mega-Hack -- see "msg_print()" */
 	msg_flag = FALSE;
@@ -6607,10 +6614,15 @@ void exit_game_panic(void)
 	(void)strcpy(died_from, "(panic save)");
 
 	/* Panic save, or get worried */
-	if (!save_player()) quit("panic save failed!");
+	if (!save_player())
+	{
+		fprintf(stderr, "[ENGINE FATAL] Panic save failed for '%s'!\n", savefile);
+		quit("panic save failed!");
+	}
 
 	/* Successful panic save */
-	quit("panic save succeeded!");
+	fprintf(stderr, "[ENGINE PANIC] Panic save succeeded to '%s.pnc'. Safe rescue exit.\n", savefile);
+	quit("+0");
 }
 
 

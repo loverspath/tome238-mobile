@@ -76,7 +76,10 @@ async def test_pipeline():
 
     finally:
         srv.terminate()
-        srv.wait()
+        try:
+            srv.wait(timeout=2.0)
+        except subprocess.TimeoutExpired:
+            srv.kill()
 
 if __name__ == "__main__":
     print("==================================================")

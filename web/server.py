@@ -402,7 +402,7 @@ async def main():
         print("\nShutting down server...")
         for sess in list(active_sessions.values()):
             sess.cleanup()
-        sys.exit(0)
+        os._exit(0)
 
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)

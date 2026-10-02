@@ -605,15 +605,62 @@ static errr Term_xtra_gcu_event(int v)
 		/* Paranoia -- Wait for it */
 		nodelay(stdscr, FALSE);
 
-		/* Get a keypress */
-		i = getch();
+		while (1)
+		{
+			errno = 0;
+			i = getch();
 
-		/* Mega-Hack -- allow graceful "suspend" */
-		for (k = 0; (k < 10) && (i == ERR); k++) i = getch();
+			/* Interrupted by signal (e.g. SIGWINCH) -- retry without panic */
+			if (i == ERR && errno == EINTR)
+			{
+				continue;
+			}
 
-		/* Broken input is special */
-		if (i == ERR) exit_game_panic();
-		if (i == EOF) exit_game_panic();
+#ifdef KEY_RESIZE
+			if (i == KEY_RESIZE)
+			{
+				Term_xtra(TERM_XTRA_REACT, 0);
+				continue;
+			}
+#endif
+
+			/* Broken input handling */
+			if (i == ERR)
+			{
+				if (feof(stdin))
+				{
+					fprintf(stderr, "[ENGINE GCU] Stdin EOF detected in getch(). Triggering panic save.\n");
+					exit_game_panic();
+				}
+
+				/* Mega-Hack -- allow graceful retry if transient */
+				for (k = 0; (k < 20) && (i == ERR); k++)
+				{
+					usleep(20000); /* 20ms pause */
+					errno = 0;
+					i = getch();
+					if (i == ERR && errno == EINTR) continue;
+#ifdef KEY_RESIZE
+					if (i == KEY_RESIZE) { i = ERR; continue; }
+#endif
+				}
+
+				if (i == ERR)
+				{
+					fprintf(stderr, "[ENGINE GCU] getch() returned persistent ERR (errno=%d: %s). Triggering panic save.\n",
+					        errno, strerror(errno));
+					exit_game_panic();
+				}
+			}
+
+			if (i == EOF)
+			{
+				fprintf(stderr, "[ENGINE GCU] getch() returned EOF. Triggering panic save.\n");
+				exit_game_panic();
+			}
+
+			break;
+		}
 	}
 
 	/* Do not wait */
@@ -627,6 +674,14 @@ static errr Term_xtra_gcu_event(int v)
 
 		/* Wait for it next time */
 		nodelay(stdscr, FALSE);
+
+#ifdef KEY_RESIZE
+		if (i == KEY_RESIZE)
+		{
+			Term_xtra(TERM_XTRA_REACT, 0);
+			return (1);
+		}
+#endif
 
 		/* None ready */
 		if (i == ERR) return (1);
