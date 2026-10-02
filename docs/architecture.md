@@ -332,6 +332,77 @@ In traditional terminal roguelikes, the `Escape` key (`0x1b`) is the single most
   - Direct tap on `⎋` immediately transmits raw `\x1b` over the WebSocket PTY bridge.
   - Automatically clears sticky `Shift` modifier state (`exitShiftMode()`) and resets pagination back to Page 0 (`resetPage()`), ensuring the player is instantly returned to the default exploration keyboard after dismissing a menu.
 
+### 3.10 Floating Button List Manager & Batch Deletion Modal (`#manage-fb-modal`)
+To give players a centralized cockpit for managing numerous on-screen floating macro buttons without hunting for individual handles, we implemented the Floating Buttons Manager dialog:
+- **Modal Architecture (`#manage-fb-modal`)**:
+  - Accessible directly from the Quick Settings menu (`Manage Floating Buttons` / `manage-floating`).
+  - Styled with dark glassmorphism (`.manage-dialog`, `max-width: 480px`, `max-height: 85vh`) and smooth vertical scrolling (`.manage-fb-body`).
+- **Toolbar & Count Badge**:
+  - Displays dynamic button counter (`#fb-count-badge`: `Active Buttons (N)`).
+  - Quick addition button (`#btn-fb-add-new`: `➕ Add New`) that transitions directly into the Universal Button Editor in new floating mode.
+- **Dynamic Button Inspection List (`#manage-fb-list`)**:
+  - Renders each floating button with:
+    - **Visual Label Badge (`.manage-fb-badge`)**: Neon cyan pill with user-defined label.
+    - **Macro Command String (`.manage-fb-action`)**: Monospace snippet of the bound command.
+    - **Screen Coordinates (`.manage-fb-pos`)**: Live viewport coordinates `(left, top)`.
+  - **Inline Action Buttons**:
+    - `✏️ Edit`: Closes the manager and launches the Universal Button Editor pre-populated with button properties.
+    - `🗑️ Delete`: Immediately removes the button from `state.floatingButtons`, updates `localStorage: tome_floating_buttons`, and re-renders both the on-screen overlay and the manager list.
+- **Batch Deletion (`#btn-fb-delete-all`)**:
+  - A prominent danger button (`🗑️ Delete All Buttons`) in the modal footer prompts confirmation and clears all active floating buttons in one tap.
+- **Two-Way DOM Synchronization**:
+  - Any button created or modified via the Universal Button Editor automatically updates the active list in `#manage-fb-modal` if it remains open.
+
+### 3.11 Unified Layout & Macro Preset System (`#presets-modal`)
+Different character classes and play styles demand vastly different screen configurations (e.g., a melee Warrior prefers maximum viewport with just a D-Pad, whereas a Mage requires fast spell and function key triggers). We introduced a full-stack Preset Engine:
+- **Modal Architecture (`#presets-modal`)**:
+  - Accessible via Quick Settings (`Keymap & Button Presets` / `open-presets`).
+  - Provides a top creation bar (`#preset-name-input` and `#btn-preset-save`) to serialize current settings as a named preset into `localStorage: tome_presets`.
+- **Complete Layout State Serialization**:
+  - Each preset captures a full snapshot of the mobile interface:
+    - `keyboardStyle`: Active layout (`'adv'` or `'simple'`).
+    - `showKeyboard`: Visibility flag for virtual keyboard.
+    - `showDpad`: Visibility flag for 3x3 D-Pad.
+    - `dockMode`: Layout mode (`'docked'` vs `'overlap'`).
+    - `floatingButtons`: Array of all positioned floating action buttons.
+    - `customRibbon`: Array of custom ribbon buttons.
+    - `customKeymaps`: Dictionary of custom virtual keyboard key mappings.
+- **Built-in Factory Presets (`BUILTIN_PRESETS`)**:
+  1. **Default (`builtin_default`)**: Standard 5x10 AdvKeyboard, default ribbon, default floating buttons (`F1`, `Rest`), overlap mode. Marked with a purple `Built-in` badge.
+  2. **Minimal Touch (`builtin_minimal_touch`)**: Maximized 100% viewport with virtual keyboard hidden (`showKeyboard: false`), visible D-Pad, standard ribbon, and 4 strategically pinned floating badges (`F1`, `F2`, `🎒 Inven`, `💤 Rest`). Ideal for immersive dungeon crawling.
+  3. **Compact 3-Row (`builtin_compact_simple`)**: Slim 3-row compact keyboard (`keyboardStyle: 'simple'`), high viewport clearance, visible D-Pad, and standard action ribbon.
+- **One-Tap Application (`applyPreset`)**:
+  - Tapping `🔄 Apply` instantly restores all captured parameters, updates `localStorage`, re-renders the keyboard panel, updates top-bar indicators, and triggers `adjustTerminalScale()` to perfectly match the terminal canvas to the new geometry.
+- **Custom Preset Management**:
+  - User-created presets receive a green `Custom` badge and can be deleted individually with the `✕` delete button.
+
+### 3.12 One-Click Top-Bar Keyboard Toggle (`#btn-toggle-keyboard`)
+To rapidly maximize terminal viewing space during dungeon exploration without opening settings menus, we introduced a dedicated top-bar toggle:
+- **Instant Access Control (`#btn-toggle-keyboard`)**:
+  - Positioned in the top action bar with a keyboard glyph (`⌨`).
+  - Single tap toggles `state.showKeyboard` on/off immediately with haptic feedback.
+- **Active State Indicator (`.active-toggled`)**:
+  - When the virtual keyboard is hidden, the button lights up with a high-visibility amber glow (`#f59e0b` background tint and box-shadow) and updates its tooltip to `Toggle Keyboard (Show)`. This clearly signals to the player why the touch keyboard is absent.
+- **Viewport Expansion & Scale Re-calculation**:
+  - Hiding the keyboard removes `#keyboard-panel` (`hidden-panel`) and allows the terminal container to expand to the full screen height.
+  - Automatically invokes `adjustTerminalScale()` to calculate new optimum font sizes.
+- **Bi-directional State Synchronization**:
+  - State is synchronized with `localStorage: tome_show_keyboard` and the Preferences checkbox `pref-enable-keyboard`.
+
+### 3.13 3-Row Compact Simple Keyboard Layout (`simple_portrait` & `simple_landscape`)
+For players who want continuous virtual keyboard access while minimizing visual occlusion of the dungeon grid, we implemented a dedicated 3-Row Simple Keyboard:
+- **Declarative JSON Layouts ([`web/keyboards.json`](file:///data/data/com.termux/files/home/tome238-mobile/web/keyboards.json))**:
+  - Registered as `simple_landscape` and `simple_portrait` (3 rows × 10 columns):
+    - **Row 0 (Essential Commands)**: `⎋` (Esc), `i` (Inven), `m` (Magic), `d` (Drop), `l` (Look), `*` (Target), `f` (Fire), `g` (Pickup), `⏎` (Enter).
+    - **Row 1 (Exploration & Recovery)**: `q` (Quaff), `r` (Read), `u` (Use), `w` (Wield), `M` (Map), `R` (Rest), `.` (Wait), `o` (Open), `s` (Search).
+    - **Row 2 (Numeric Direct Access)**: `1 2 3 4 5 6 7 8 9 0` for direct spell, inventory slot, or target indexing.
+- **Ultra-Compact 22vh Styling (`#keyboard-panel.simple-keyboard`)**:
+  - Constrains keyboard height to `22vh` (min 125px, max 185px) compared to the 40~44vh of the standard 5x10 keyboard, liberating more than 50% additional viewport area for the game canvas.
+  - Keycaps render with enlarged, legible typography (`font-size: 14px`).
+- **Top-Bar Style Switcher Pill (`#btn-switch-kbd-style`)**:
+  - Dedicated pill button in the top action bar displaying the active keyboard layout mode (`5x10` vs `3-Row`).
+  - Single tap toggles between the two modes, updates `localStorage: tome_keyboard_style`, and instantly re-renders the keyboard layout.
+
 ---
 
 ## 4. Real-Time Crash & Error Diagnostics Pipeline

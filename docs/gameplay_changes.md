@@ -22,6 +22,10 @@
 | **Action Ribbon Customization** | Static command keys or complex multi-key combinations | Dynamically configurable action ribbon with `➕` addition button and long-press editor | Allows instant 1-tap triggering of user-defined spells, item actions, and macros without keyboard toggles. |
 | **Function Keys & Macro Palette** | Manual ANSI escape sequence entry or PC keyboard F-keys | 2×6 visual F1~F12 grid, `{F1}`~`{F12}` token parser, and quick macro chips | Bridges complex roguelike terminal commands to intuitive touch buttons. |
 | **Keyboard Ergonomics** | Rigid layout with low-utility Redo key on primary row | Dedicated `⎋` Esc keycap replacing `↺` Redo on Row 4 | Instant thumb access to the roguelike cancel/escape action with automatic Shift/page reset. |
+| **Floating Button Manager** | None (No visibility or batch controls for macros) | Centralized inspection modal (`#manage-fb-modal`) with live coordinate display & batch clear | Eliminates screen clutter; provides 1-tap editing, deletion, and complete purge of floating action buttons. |
+| **Layout & Macro Presets** | Fixed input setup requiring manual re-binding per character | Full layout state serialization (`#presets-modal`) with 3 built-in profiles + custom slots | Allows seamless switching between Warrior, Mage, and minimalist touch setups with instant 1-tap application. |
+| **One-Click Keyboard Toggle** | Multi-level menu navigation to toggle software keyboard | Dedicated top-bar `⌨` button with active amber indicator (`.active-toggled`) | Instantly frees 100% viewport height for exploration and automatically re-scales terminal typography. |
+| **3-Row Compact Simple Keyboard**| Bulky 5x10 keyboard (40~44vh) or none | 22vh compact 3-row layout (`simple_portrait`/`simple_landscape`) with top-bar switcher | Over 50% viewport height savings while preserving essential roguelike commands and numeric keys. |
 
 ---
 
@@ -313,7 +317,7 @@ In classic roguelikes, `Ctrl+S` (`\x13`, `KTRL('S')`) is the standard in-game co
 3. **Automated Regression Test (`scripts/test_ctrl_s.py`)**:
    - Added automated headless PTY test that completes character creation into Bree, sends `\x13` (`Ctrl+S`), verifies `Saving game... done.`, checks that the savefile is written into `saves/`, and validates terminal responsiveness with subsequent commands. Integrated into `./test` as test `[6/6]`.
 
-### 4.5 Mobile Touch Interaction Suite: Draggable Floating Buttons, Custom Action Ribbon, F-Key Palette & Ergonomic Esc Keycap
+### 4.5 Mobile Touch Interaction Suite: Draggable Floating Buttons, Custom Action Ribbon, F-Key Palette, Presets System, Keyboard Toggle & 3-Row Simple Layout
 
 #### Rationale & Mobile UX Objectives
 In desktop ToME, keyboard shortcuts (such as function keys `F1`~`F12`, macros, and `Escape`) provide rapid access to vital combat and recovery maneuvers. On mobile touch screens, requiring players to toggle through multiple keyboard sub-pages or type escape codes in the heat of battle leads to character death. We implemented a unified mobile touch interaction suite:
@@ -340,6 +344,24 @@ In desktop ToME, keyboard shortcuts (such as function keys `F1`~`F12`, macros, a
 4. **AdvKeyboard Row 4 Esc (`⎋`) Keycap Ergonomics**:
    - In [`web/keyboards.json`](file:///data/data/com.termux/files/home/tome238-mobile/web/keyboards.json) (both Page 0 and Page 1), replaced the low-utility Redo key (`↺`) on Row 4 left of `⏎` with the roguelike cancel/escape key (`⎋`).
    - In [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), pressing `⎋` transmits raw `\x1b`, cancels `Shift` mode, and resets pagination to Page 0, ensuring players can instantly back out of menus or danger.
+
+5. **Floating Action Buttons Manager & Batch Deletion (`#manage-fb-modal`)**:
+   - **Centralized Inspection Cockpit**: Dedicated modal dialog displaying all on-screen floating macro buttons with their assigned labels, action commands, and current `(left, top)` coordinates.
+   - **Management Operations**: Provides quick-addition (`➕ Add New`), inline editing (`✏️ Edit`), individual removal (`🗑️ Delete`), and 1-tap batch purge (`🗑️ Delete All Buttons`), updating `localStorage: tome_floating_buttons` and synchronizing the DOM in real time.
+
+6. **Unified Layout & Macro Preset System (`#presets-modal`)**:
+   - **Full Interface Serialization**: Captures a comprehensive snapshot including active keyboard layout style, visibility flags, dock positioning, floating buttons array, ribbon buttons array, and custom keymap bindings.
+   - **Built-in Factory Presets**: Ships with 3 factory built-in presets: `Default` (5x10 AdvKeyboard + default ribbon & shortcuts), `Minimal Touch` (Maximized screen, hidden keyboard, D-pad + 4 quick action badges), and `Compact 3-Row` (Slim 3-row keyboard + D-pad & floating macros).
+   - **Custom Slots & Instant Switching**: Allows saving custom preset profiles under `localStorage: tome_presets` with instant 1-tap restoration (`🔄 Apply`) and per-item deletion (`✕`).
+
+7. **One-Click Top-Bar Keyboard Toggle (`#btn-toggle-keyboard`)**:
+   - **Instant Exploration Mode**: Dedicated top action bar button (`⌨`) providing instantaneous single-tap hiding or showing of the virtual keyboard without navigating settings dialogs.
+   - **Active State Indicator**: Features an active amber status indicator (`.active-toggled`) when hidden and dynamically triggers terminal font re-scaling (`adjustTerminalScale()`) to expand the ASCII dungeon canvas to 100% viewport height.
+
+8. **3-Row Compact Simple Keyboard Layout (`simple_portrait` / `simple_landscape`)**:
+   - **Streamlined Ergonomics**: Ultra-compact 3-row × 10-column layout defined in [`web/keyboards.json`](file:///data/data/com.termux/files/home/tome238-mobile/web/keyboards.json) dedicating row 0 to primary roguelike interactions (`⎋`, `i`, `m`, `d`, `l`, `*`, `f`, `g`, `⏎`), row 1 to secondary actions (`q`, `r`, `u`, `w`, `M`, `R`, `.`, `o`, `s`), and row 2 to numeric target/selection indices (`1`~`0`).
+   - **High-Clearance Viewport (22vh)**: Constrains keyboard height to `22vh` (min 125px, max 185px), freeing over 50% more vertical canvas for the dungeon viewport compared to the standard 5x10 keyboard (40~44vh).
+   - **Instant Mode Switching**: Swapped seamlessly via the top action bar's `#btn-switch-kbd-style` switcher pill (`5x10` vs `3-Row`).
 
 ---
 
