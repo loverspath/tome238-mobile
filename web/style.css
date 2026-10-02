@@ -15,6 +15,9 @@
   --btn-action: #232734;
   --border-color: #2e3446;
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --top-bar-height: 38px;
+  --ribbon-height: 42px;
+  --kbd-height: 220px;
 }
 
 * {
@@ -33,7 +36,7 @@ html, body {
   overflow: hidden;
   background-color: var(--bg-primary);
   color: var(--fg-main);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overscroll-behavior: none;
   touch-action: none;
 }
@@ -43,7 +46,9 @@ html, body {
   flex-direction: column;
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
+  position: relative;
 }
 
 /* --- Top Header Bar --- */
@@ -51,46 +56,56 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 38px;
-  min-height: 38px;
+  height: var(--top-bar-height);
+  min-height: var(--top-bar-height);
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
-  padding: 0 10px;
+  padding: 0 8px;
   font-size: 13px;
-  z-index: 10;
+  z-index: 60;
+  flex-shrink: 0;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .brand .logo {
   font-weight: 800;
   color: var(--accent-gold);
   letter-spacing: 0.5px;
+  font-size: 14px;
 }
 
 .brand .version {
   font-size: 10px;
   background: var(--bg-tertiary);
   color: var(--fg-dim);
-  padding: 2px 5px;
+  padding: 2px 4px;
   border-radius: 4px;
 }
 
 .status-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.status-group::-webkit-scrollbar {
+  display: none;
 }
 
 .status-indicator {
-  font-size: 11px;
+  font-size: 10px;
   padding: 2px 6px;
   border-radius: 10px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .status-indicator.connected {
@@ -103,29 +118,51 @@ html, body {
   color: var(--accent-red);
 }
 
-.icon-btn {
+.top-btn {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--fg-main);
-  width: 28px;
   height: 28px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
   cursor: pointer;
   touch-action: manipulation;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
 
-.icon-btn:active {
+.top-btn:active {
   background: var(--accent-gold);
   color: #000;
+  transform: scale(0.95);
+}
+
+.pill-btn {
+  padding: 0 8px;
+  border-radius: 14px;
+  background: #202434;
+  border-color: #3b4258;
+  color: #60a5fa;
+  font-size: 11px;
+}
+
+.pill-btn:hover {
+  border-color: var(--accent-blue);
+}
+
+.icon-btn {
+  padding: 0 6px;
+  min-width: 28px;
+  font-size: 12px;
 }
 
 /* --- Terminal Viewport --- */
 #terminal-wrapper {
-  flex: 1;
   position: relative;
   width: 100%;
   background-color: #000000;
@@ -135,13 +172,34 @@ html, body {
   align-items: center;
 }
 
+/* Docked Mode Viewport */
+.docked-mode #terminal-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Overlap Mode Viewport */
+.overlap-mode #terminal-wrapper {
+  position: absolute;
+  top: var(--top-bar-height);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: calc(100% - var(--top-bar-height));
+  z-index: 10;
+}
+
 #terminal {
   width: 100%;
   height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .xterm {
-  padding: 4px;
+  padding: 2px;
   height: 100%;
 }
 
@@ -153,15 +211,31 @@ html, body {
 #ribbon-bar {
   display: flex;
   align-items: center;
-  height: 44px;
-  min-height: 44px;
+  height: var(--ribbon-height);
+  min-height: var(--ribbon-height);
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   padding: 4px 6px;
   gap: 6px;
   overflow: hidden;
-  z-index: 10;
+  z-index: 50;
+  flex-shrink: 0;
+  transition: opacity 0.3s ease;
+}
+
+.overlap-mode #ribbon-bar {
+  position: absolute;
+  bottom: var(--kbd-height);
+  left: 0;
+  right: 0;
+  background: rgba(24, 24, 32, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.profile-minimal.overlap-mode #ribbon-bar {
+  bottom: 0;
 }
 
 .ribbon-section {
@@ -184,14 +258,15 @@ html, body {
 
 .ribbon-divider {
   width: 1px;
-  height: 24px;
+  height: 22px;
   background-color: var(--border-color);
   margin: 0 2px;
+  flex-shrink: 0;
 }
 
 .ribbon-btn {
-  height: 34px;
-  padding: 0 10px;
+  height: 32px;
+  padding: 0 9px;
   background-color: var(--btn-action);
   border: 1px solid var(--border-color);
   color: var(--fg-main);
@@ -205,12 +280,13 @@ html, body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: background 0.1s, transform 0.1s;
 }
 
 .ribbon-btn:active, .ribbon-btn.active {
   background-color: var(--accent-gold);
   color: #000;
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
 .ribbon-btn.esc-btn {
@@ -234,24 +310,45 @@ html, body {
 /* --- Virtual Input Controller (Bottom Panel) --- */
 #keyboard-panel {
   display: flex;
-  height: 215px;
-  min-height: 215px;
+  height: var(--kbd-height);
+  min-height: var(--kbd-height);
   background-color: var(--bg-secondary);
   padding: 6px;
   gap: 8px;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 10;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 50;
+  flex-shrink: 0;
 }
 
+/* Overlap Mode for Keyboard */
+.overlap-mode #keyboard-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(18, 18, 22, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* Overlap Idle Dimming */
+.overlap-mode.idle-dim #keyboard-panel,
+.overlap-mode.idle-dim #ribbon-bar {
+  opacity: 0.22;
+}
+
+/* Ghost & Hidden states */
 #keyboard-panel.ghost {
-  opacity: 0.35;
+  opacity: 0.35 !important;
 }
 
-#keyboard-panel.hidden-panel {
-  display: none;
+#keyboard-panel.hidden-panel,
+.profile-minimal #keyboard-panel {
+  display: none !important;
 }
 
-/* Left Actions Grid */
+/* --- Profile 1: Roguelike Default Layout --- */
 .action-grid {
   flex: 1;
   display: flex;
@@ -278,12 +375,13 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.1s, transform 0.1s;
 }
 
 .action-btn:active, .action-btn.active {
   background-color: var(--accent-gold);
   color: #000;
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
 .action-btn.mod-btn.active {
@@ -297,7 +395,7 @@ html, body {
   border-color: #f87171;
 }
 
-/* Right 3x3 D-Pad */
+/* 3x3 D-Pad */
 .dpad-grid {
   width: 175px;
   min-width: 175px;
@@ -322,6 +420,7 @@ html, body {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow);
+  transition: background 0.1s, transform 0.1s;
 }
 
 .dpad-btn .num {
@@ -353,30 +452,132 @@ html, body {
   color: #333;
 }
 
-/* --- Landscape Layout Adjustments --- */
-@media (orientation: landscape) and (max-height: 500px) {
-  #top-bar {
-    height: 30px;
-    min-height: 30px;
-  }
-  #ribbon-bar {
-    height: 36px;
-    min-height: 36px;
+/* --- Profile 2: Numpad Focused Layout --- */
+.numpad-panel-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  gap: 8px;
+}
+
+.numpad-left-tools {
+  flex: 0 0 38%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.numpad-right-keys {
+  flex: 1 1 62%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.numpad-key-btn {
+  position: relative;
+  background: #1f2536;
+  border: 1px solid #374151;
+  color: #f9fafb;
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  transition: background 0.1s, transform 0.1s;
+}
+
+.numpad-key-btn .arrow-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+.numpad-key-btn:active, .numpad-key-btn.active {
+  background: var(--accent-gold);
+  color: #000;
+  transform: scale(0.95);
+}
+
+.numpad-key-btn:active .arrow-sub, .numpad-key-btn.active .arrow-sub {
+  color: #1f2937;
+}
+
+/* --- Profile 3: Minimal Ribbon Additions --- */
+.profile-minimal #ribbon-bar {
+  border-bottom: none;
+  height: 46px;
+  min-height: 46px;
+}
+
+.minimal-dir-btn {
+  background-color: var(--btn-cardinal);
+  border-color: #3b82f6;
+  color: #93c5fd;
+  font-weight: 800;
+  padding: 0 11px;
+}
+
+/* --- Portrait Optimizations --- */
+@media (orientation: portrait) {
+  :root {
+    --kbd-height: 38vh;
   }
   #keyboard-panel {
-    height: 145px;
-    min-height: 145px;
-    padding: 3px;
+    min-height: 210px;
+    max-height: 310px;
+  }
+}
+
+/* --- Landscape Optimizations --- */
+@media (orientation: landscape) {
+  :root {
+    --top-bar-height: 30px;
+    --ribbon-height: 34px;
+    --kbd-height: 32vh;
+  }
+  #top-bar {
+    padding: 0 6px;
+  }
+  .brand .logo {
+    font-size: 12px;
+  }
+  .top-btn {
+    height: 24px;
+    font-size: 10px;
+    padding: 0 5px;
+  }
+  .ribbon-btn {
+    height: 26px;
+    font-size: 11px;
+    padding: 0 7px;
+  }
+  #keyboard-panel {
+    min-height: 120px;
+    max-height: 175px;
+    padding: 4px;
     gap: 6px;
   }
   .dpad-grid {
-    width: 160px;
-    min-width: 160px;
+    width: 155px;
+    min-width: 155px;
   }
   .dpad-btn {
     font-size: 14px;
   }
   .action-btn {
     font-size: 11px;
+  }
+  .numpad-key-btn {
+    font-size: 16px;
+  }
+  .numpad-key-btn .arrow-sub {
+    font-size: 9px;
   }
 }
