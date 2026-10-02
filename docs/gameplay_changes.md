@@ -30,6 +30,7 @@
 | **Hall of Fame (`scores.raw`)** | Tracked in git (`game/lib/apex/scores.raw`), causing dirty worktree conflicts | Isolated in `saves/scores.raw` via symlink, ignored in git | High scores persist across updates and deaths without git stash or merge friction. |
 | **Terminal Left-Edge Clipping** | Narrow 2px margins and 0.58 aspect ratio clipping column 0 on curved screens | 12px horizontal safety margin, 0.61 aspect ratio, and 4px padding | Guarantees 100% complete visibility of leftmost stats, health bars, and dungeon boundaries. |
 | **Runecraft Magic Engine (TomeNET Integration)** | Isolated spellbook casting or fixed magic systems | Full TomeNET Runecraft engine ported to Lua 4.0 (`runecraft.lua`) via C Mkey Hook (`09m` / `m` -> `c`) | Grants Adventurer class 21 elements, 8 forms, 7 modes (with Brief dual-casting), Int/Dex scaling, and backlash protection. |
+| **Polymath Universal / Testing Class** | Rigid class exclusions locking spells and skills behind archetype boundaries | Universal sandbox class (`Polymath`, ID 29) with all skills unlocked (`0.8`~`1.2` scaling) + starting potions | Empowers end-to-end sandbox testing and flexible hybrid play with instant Detonations, Learning, Manathrust, and Runecraft. |
 
 ---
 
@@ -117,6 +118,65 @@ flowchart LR
    - Runecraft runes can be permanently etched into weapons and armor via alchemical forging.
 3. **Thaumaturgy + Alchemy (Zero-Burden Scavenging)**:
    - The Adventurer operates at minimal carrying weight because neither discipline requires books. All inventory capacity is dedicated to alchemical reagents, extracted essences, and rune stones.
+
+### 2.5 The Polymath Universal Testing Class Specification
+
+#### Concept & Sandbox Testing Rationale
+While the **Adventurer** class synthesizes Alchemy, Thaumaturgy, and Runecraft into a cohesive generalist hybrid, automated testing and developer experimentation often require instantaneous access to all game systems without rolling dozens of different characters.
+
+The **Polymath** (박식가, ID 29) is a universal developer and sandbox testing class registered in [`game/lib/edit/p_info.txt`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/edit/p_info.txt#L876-L950) that unifies every combat, arcane, divine, and nature discipline into a single playable archetype:
+- **Comprehensive Skill Tree Access**:
+  - **Martial**: Combat, Weaponmastery, Sword, Axe, Hafted, Polearm, Barehand-combat, Stunning-blows, Critical-hits, Archery, Sling, Bow, Crossbow, Boomerang, Boulder-throwing, Dodging.
+  - **Arcane & Innate**: Magic, Spell-power, Mana, Sorcery, Runecraft (ID 34), Thaumaturgy (ID 43), Alchemy (ID 39), Geomancy, Fire, Water, Air, Earth, Meta, Conveyance, Divination, Temporal, Mind.
+  - **Specialist Schools**: Nature, Necromancy, Demonology, Udun, Prayer, Spirituality, Mindcraft, Music, Summoning, Corpse-preservation, Possession, Symbiosis, Mimicry, Monster-lore, Sneakiness, Stealth, Backstab, Stealing, Disarming, Magic-Device.
+- **Balanced Baseline Scaling**:
+  - Base skill modifiers are configured to `+1000:+1000` (1.0x baseline growth) with core proficiencies scaled between `0.8x` and `1.2x` (`+800` to `+1200`), avoiding hard penalties that lock out spells or abilities while providing a stable benchmark across tests.
+  - Experience penalty set to `40%` (`C:B:4:40:2`, `C:S:1:1:1:1:1:1:40:0`), reflecting universal multi-discipline capability.
+- **Racial Compatibility**: Allowed across major races (Human, Half-Elf, High-Elf, Hobbit, Dwarf, Half-Orc, Dunadan) and enabled in the main ToME module (`M:C:Polymath`).
+
+#### Starting Equipment & Survival Loadout
+To support rapid sandbox verification of items, potion effects, and magical systems from turn 1, the Polymath receives a curated suite of starting gear:
+1. **Potion of Detonations (`TV_POTION=71`, `SV_POTION_DETONATIONS=22`)**: Immediate high-yield testing of explosive projection and defensive countermeasures.
+2. **Potion of Learning (`TV_POTION=71`, `SV_POTION_LEARNING=12`)**: Grants immediate bonus skill points upon consumption, allowing instant unlocking and leveling of high-tier skills without grinding dungeon floors.
+3. **Book of Manathrust**: Automatically created and granted via birth hook ([`game/lib/scpt/player.lua:66-72`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/player.lua#L66-L72)) alongside Adventurer.
+4. **Fundamental Runecraft Runes**: Fire (`104:5:1d1`), Light (`104:1:1d1`), Darkness (`105:1:1d1`) for immediate zero-preparation elemental testing.
+5. **Martial & Survival Gear**: Broad Sword (`23:4:1d1`), Soft Leather Boots (`36:2:1d1`), Cloak (`39:1:1d1`), Ration of Food (`80:16:1d1`), Torches (`111:50:1d1`).
+
+#### Memory Safety Fix: Starting Equipment Buffer Expansion
+In legacy ToME 2.3.8-ah, the structures tracking starting equipment (`player_race`, `player_race_mod`, `player_spec`, and `player_class`) in [`game/src/types.h`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/types.h) statically allocated arrays of size 5:
+```c
+s16b obj_tval[5];
+s16b obj_sval[5];
+s16b obj_pval[5];
+s16b obj_dd[5];
+s16b obj_ds[5];
+s16b obj_num;
+```
+Because the Polymath class configures 10 distinct starting equipment entries (`C:a:O`), parsing `p_info.txt` would cause an out-of-bounds write beyond index 4, silently corrupting adjacent struct members (`body_parts`, function pointers, or padding).
+
+**C Core Resolution**:
+1. **Buffer Expansion ([`game/src/types.h:1177, 1259, 1292, 1369`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/types.h))**:
+   - Expanded `obj_tval`, `obj_sval`, `obj_pval`, `obj_dd`, `obj_ds` array dimensions from `[5]` to `[20]` across `struct player_race`, `struct player_race_mod`, `struct player_spec`, and `struct player_class`.
+2. **Bounds Enforcement ([`game/src/init1.c:2827, 3216`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/init1.c#L2827))**:
+   - Added explicit bounds guards in `init_player_info_txt()` for both class and spec parsing:
+     ```c
+     if (c_ptr->obj_num < 20)
+     {
+         c_ptr->obj_pval[c_ptr->obj_num] = s[4];
+         c_ptr->obj_tval[c_ptr->obj_num] = s[0];
+         c_ptr->obj_sval[c_ptr->obj_num] = s[1];
+         c_ptr->obj_dd[c_ptr->obj_num] = s[2];
+         c_ptr->obj_ds[c_ptr->obj_num++] = s[3];
+     }
+     ```
+   - Prevents memory corruption regardless of the number of starting items configured.
+
+#### Automated Regression Testing
+- Implemented comprehensive automated headless PTY test ([`scripts/test_polymath.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_polymath.py)):
+  1. `[Test 1]`: Spawns Polymath character (`'h'` selection) into game world, inspects Character Sheet (`'C'`), and verifies class identity confirms `"Polymath"`.
+  2. `[Test 2]`: Inspects inventory (`'i'`) and confirms presence of Potion of Detonations, Potion of Learning, and Book of Manathrust.
+  3. `[Test 3]`: Consumes Potion of Learning (`'qb'`) and validates clean skill point acquisition without bionic libc abort or corruption.
+- Integrated into the master test runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) as stage `[9/9]`.
 
 ---
 
