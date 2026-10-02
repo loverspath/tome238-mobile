@@ -29,7 +29,7 @@
 | **PRF Settings & Macro Persistence** | Stored inside source tree (`game/lib/user/`), wiped or dirtying repo | Isolated in `saves/user/` via symlink + `fd_make` `EEXIST` fallback | User macros (`*.prf`), options, and automator rules persist across updates without repo pollution. |
 | **Hall of Fame (`scores.raw`)** | Tracked in git (`game/lib/apex/scores.raw`), causing dirty worktree conflicts | Isolated in `saves/scores.raw` via symlink, ignored in git | High scores persist across updates and deaths without git stash or merge friction. |
 | **Terminal Left-Edge Clipping** | Narrow 2px margins and 0.58 aspect ratio clipping column 0 on curved screens | 12px horizontal safety margin, 0.61 aspect ratio, and 4px padding | Guarantees 100% complete visibility of leftmost stats, health bars, and dungeon boundaries. |
-| **Runecraft Magic Engine (TomeNET Integration)** | Isolated spellbook casting or fixed magic systems | Full TomeNET Runecraft engine ported to Lua 4.0 (`runecraft.lua`) via C Mkey Hook (`09m` / `m` -> `c`) | Grants Adventurer class 21 elements, 8 forms, 7 modes (with Brief dual-casting), Int/Dex scaling, and backlash protection. |
+| **Runecraft Magic Engine (TomeNET Authentic 2-Step)** | Isolated spellbook casting or fixed magic systems | Authentic TomeNET 2-step fundamental rune combination engine (`runecraft.lua`) via C Mkey Hook (`09m` / `m` -> `c`) | Grants Adventurer & Polymath classes 6 fundamental runes (`Rune 1` -> `Rune 2` synthesis into 21 elements), 8 forms, 7 modes (Brief dual-casting), Int/Dex scaling, and backlash protection. |
 | **Polymath Universal / Testing Class** | Rigid class exclusions locking spells and skills behind archetype boundaries | Universal sandbox class (`Polymath`, ID 29) with all skills unlocked (`0.8`~`1.2` scaling) + starting potions | Empowers end-to-end sandbox testing and flexible hybrid play with instant Detonations, Learning, Manathrust, and Runecraft. |
 
 ---
@@ -44,7 +44,7 @@ On a mobile touchscreen:
 - The **Adventurer** class resolves this by uniting Middle-earth's three most tactile, book-free magical systems into a cohesive caster-crafter archetype:
   1. **Alchemy ([`s_info.txt:374`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/edit/s_info.txt#L374))**: Extraction of raw magical essences from dungeon loot; transmutation and self-sufficient item crafting without store reliance.
   2. **Thaumaturgy ([`s_info.txt:144`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/edit/s_info.txt#L144))**: Spontaneous, innate magic projected directly from the soul. Generates unique offensive bolts, beams, and balls per character without carrying spellbooks.
-  3. **Runecraft ([`s_info.txt:138`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/edit/s_info.txt#L138))**: Dynamic combination of fundamental runes (Light, Dark, Nexus, Nether, Chaos, Mana) traced directly into the air to cast 21 elemental spells across 14 shapes.
+  3. **Runecraft ([`s_info.txt:138`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/edit/s_info.txt#L138))**: Authentic TomeNET 2-step dynamic combination of 6 fundamental runes (Light, Dark, Nexus, Nether, Chaos, Mana) selected sequentially twice (`bor(r1, r2)`) to synthesize 21 elemental spells across 8 forms without carrying spellbooks.
 
 ### 2.2 Class Lore & Identity
 > *The Adventurer is not a scholar bound to the dusty libraries of Minas Tirith, nor a cloistered hermit of Dol Guldur. They are an intrepid wanderer of Middle-earth who learned survival through experimentation. Recognizing that true power lies in adaptability, the Adventurer transmutes dungeon detritus with Alchemy, releases instinctual offensive bursts through Thaumaturgy, and carves ancient eldritch runes into the air to shape the elements.*
@@ -203,7 +203,8 @@ flowchart TD
 
 ### Phase 2: Lua Engine & m-key Binding (Complete)
 - **Engine Script ([`game/lib/scpt/runecraft.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/runecraft.lua))**:
-  - Implemented pure Lua 4.0 compliant Runecraft engine covering 21 elements, 8 spell forms, and 7 spell modes.
+  - Implemented authentic TomeNET 2-step fundamental rune combination engine: 6 fundamental runes (`a` Lite, `b` Dark, `c` Nexu, `d` Neth, `e` Chao, `f` Mana) sequentially combined (`bor(r1, r2)`) to synthesize all 21 elements without cumbersome 21-element menus or `?more` pagination.
+  - 8 spell forms and 7 spell modes (including Brief 50% energy dual-casting).
   - Calculated failure rates with INT (65%) and DEX (35%) weights against `p_ptr->stat_ind`.
   - Wired backlash damage to `project(-2, 0, py, px, backlash, elem.gf, ...)` with elemental resistances and suicide prevention guard.
 - **Hook Binding**: Registered M-key hook for action 9 (`RC_ACTION_MKEY`) bound to `do_runecraft()`, loaded automatically during engine startup in [`game/lib/scpt/init.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/init.lua).
@@ -479,10 +480,10 @@ During extended mobile gameplay and testing, four critical persistence and visua
   3. `test_prf_save_and_load()`: Drives a headless PTY birth sequence into Bree, triggers an in-game macro dump (`@ -> 2 -> <char>.prf`), and validates that `# Automatic macro dump` with active macros is written into `saves/user/<char>.prf`.
 - Integrated into the master test runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) as stage `[7/8]`.
 
-### 4.7 TomeNET Runecraft Integration for Adventurer Class (C Mkey Hook, Lua 4.0 Engine, Backlash & 8-Stage Regression)
+### 4.7 TomeNET Authentic 2-Step Fundamental Rune Combination Engine for Adventurer & Polymath Classes (C Mkey Hook, Lua 4.0 Engine, Backlash & 9-Stage Regression)
 
 #### C Engine MKEY Interception
-In legacy ToME 2.3.8-ah, the Runecrafter skill command was hardcoded in C (`do_cmd_runecrafter()` in `cmd7.c`) to an unfinished, non-functional menu. To empower the Adventurer class with full dynamic Runecraft:
+In legacy ToME 2.3.8-ah, the Runecrafter skill command was hardcoded in C (`do_cmd_runecrafter()` in `cmd7.c`) to an unfinished, non-functional menu. To empower the Adventurer and Polymath classes with authentic dynamic Runecraft:
 1. **Hook Interception in C Engine ([`game/src/skills.c:995-1000`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/skills.c#L995-L1000) & [`game/src/cmd7.c:6918-6923`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/cmd7.c#L6918-L6923))**:
    - In `do_cmd_activate_skill()` (`skills.c`), intercepted `MKEY_RUNE`:
      ```c
@@ -501,11 +502,16 @@ In legacy ToME 2.3.8-ah, the Runecrafter skill command was hardcoded in C (`do_c
 
 #### Lua 4.0 Compliant Runecraft Engine ([`game/lib/scpt/runecraft.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/runecraft.lua))
 Crafted a pure Lua 4.0 compliant Runecraft engine loaded at startup via [`game/lib/scpt/init.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/init.lua):
-- **21 Elemental Mappings**:
-  - **4 High-Damage Basics (Weight 1200)**: Fire (`f`, `GF_FIRE`), Cold (`c`, `GF_COLD`), Electricity (`e`, `GF_ELEC`), Acid (`a`, `GF_ACID`).
-  - **6 Fundamental Runes**: Light (`l`, `GF_LITE`), Darkness (`d`, `GF_DARK`), Nether (`n`, `GF_NETHER`), Chaos (`h`, `GF_CHAOS`), Mana (`m`, `GF_MANA`), Nexus (`x`, `GF_NEXUS`).
-  - **11 Compound Combinations**: Poison (`p`, `GF_POIS`), Sound (`s`, `GF_SOUND`), Shards (`r`, `GF_SHARDS`), Force (`o`, `GF_FORCE`), Gravity (`g`, `GF_GRAVITY`), Inertia (`i`, `GF_INERTIA`), Time (`t`, `GF_TIME`), Confusion (`u`, `GF_CONFUSION`), Disenchantment (`k`, `GF_DISENCHANT`), Hellfire (`j`, `GF_HELL_FIRE`), Water (`w`, `GF_WATER`).
-  - Bitwise combination solver (`runecraft_combine(r1, r2)`) maps 2-rune combinations to exact TomeNET elemental properties.
+- **Authentic 6 Fundamental Runes**:
+  - `a`: Light (`Lite`, bit `0x01`, `GF_LITE`)
+  - `b`: Darkness (`Dark`, bit `0x02`, `GF_DARK`)
+  - `c`: Nexus (`Nexu`, bit `0x04`, `GF_NEXUS`)
+  - `d`: Nether (`Neth`, bit `0x08`, `GF_NETHER`)
+  - `e`: Chaos (`Chao`, bit `0x10`, `GF_CHAOS`)
+  - `f`: Mana (`Mana`, bit `0x20`, `GF_MANA`)
+- **21 Elemental Mappings via Bitwise Synthesis (`bor(r1, r2)`)**:
+  - **6 Pure Runes**: Light (`a+a`), Darkness (`b+b`), Nexus (`c+c`), Nether (`d+d`), Chaos (`e+e`), Mana (`f+f`).
+  - **15 Compound Elements**: Fire (`a+e`), Cold (`b+d`), Electricity (`a+d`), Acid (`b+e`), Poison (`b+f`), Sound (`c+e`), Shards (`c+f`), Force (`d+f`), Gravity (`b+c`), Inertia (`a+c`), Time (`c+d`), Confusion (`a+b`), Disenchantment (`e+f`), Hellfire (`d+e`), Water (`a+f`).
 - **8 Spell Forms**:
   - Bolt (`b`, base lvl 1, dice damage), Flare (`f`, base lvl 3), Beam (`e`, base lvl 4, dice damage), Ball (`a`, base lvl 7, rad 2), Cloud (`c`, base lvl 10, persistent cloud), Wall (`w`, base lvl 14, directional barrier), Wave (`v`, base lvl 18, expanding wave), Storm (`s`, base lvl 22, rad 2 self-centered tempest).
 - **7 Spell Modes**:
@@ -527,20 +533,24 @@ Crafted a pure Lua 4.0 compliant Runecraft engine loaded at startup via [`game/l
   - The caster consumes only 33 energy units and avoids self-inflicted fatality.
 
 #### Hybrid Interface
-- **Direct Macro API (`do_runecraft(opt_rune, opt_form, opt_mode, opt_dir)`)**:
-  - Allows zero-prompt instant casting for mobile floating buttons, presets, and macros (e.g. `do_runecraft("f", "b", "m", 6)` for Moderate Fire Bolt East).
-- **Interactive In-Game Prompts**:
+- **Direct Macro API (`do_runecraft(...)`)**:
+  - Supports passing two runes (`do_runecraft("a", "e", "b", "m", 6)` -> Fire Bolt East), element name (`do_runecraft("fire", "b", "m", 6)`), or pure rune (`do_runecraft("a", "b", "m", 6)` -> Light Bolt East) for zero-prompt mobile floating buttons and presets.
+- **Interactive In-Game Prompts (Authentic 2-Step Sequential Selection)**:
   - Invoked via `09m` or `m` -> `c` skill selection.
-  - Sequentially queries Rune (`[f]ire [c]old [e]lec ... [?]`), Form (`[b]olt be[e]m b[a]ll ...`), Mode (`[m]od min[i] ... [b]rief`), and Direction with full ESC cancellation support.
+  - Step 1: `Rune 1: [a]Lite [b]Dark [c]Nexu [d]Neth [e]Chao [f]Mana: `
+  - Step 2: `Rune 2: [a]Lite [b]Dark [c]Nexu [d]Neth [e]Chao [f]Mana (same=pure): `
+  - Step 3: `[Combined Element] Form: [b]olt be[e]m b[a]ll [c]loud [w]all [v]ave [s]torm [f]lare: `
+  - Step 4: `Mode: [m]od min[i] [l]eng com[p] [e]xpa [b]rief ma[x]: `
+  - Step 5: `Direction (1-9)` (with full ESC cancellation support at any prompt stage).
 
 #### Automated Regression Testing
 - Implemented comprehensive automated headless PTY test ([`scripts/test_runecraft.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_runecraft.py)):
-  1. `[Test 1]`: Moderate Fire Bolt cast via `09m` interactive sequence (`f` -> `b` -> `m` -> `6`).
-  2. `[Test 2]`: Brief Fire Bolt cast with 50% energy consumption (`f` -> `b` -> `b` -> `6`).
-  3. `[Test 3]`: Skill gate enforcement (Moderate Storm blocked at low level with `"Your skill is not high enough!"`).
+  1. `[Test 1]`: Moderate Fire Bolt cast via `09m` interactive 2-step sequence (`a` -> `e` -> `b` -> `m` -> `6`).
+  2. `[Test 2]`: Brief Fire Bolt cast with 50% energy consumption (`a` -> `e` -> `b` -> `b` -> `6`).
+  3. `[Test 3]`: Skill gate enforcement (`a` -> `e` -> `s` -> `m` blocked at low level with `"Your skill is not high enough!"`).
   4. `[Test 4]`: ESC cancellation during prompt sequence cleanly restoring game state and responsiveness.
-  5. `[Test 5]`: Menu-based invocation (`m` -> `c` -> Rune prompt).
-- Integrated into the master test runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) as stage `[8/8]`.
+  5. `[Test 5]`: Menu-based invocation (`m` -> `c` -> Rune 1 prompt).
+- Integrated into the master test runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) as stage `[8/9]`.
 
 ---
 

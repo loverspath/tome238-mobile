@@ -42,38 +42,80 @@ TomeNET 룬 주문은 32비트 무부호 정수(`u32b u`) 1개로 모든 조합�
 
 ### 3.1 6대 근원 룬 (Fundamental Runes)
 
-| 비트값 (Bit) | 룬 명칭 (Rune) | 대응 스킬 (Skill ID) | 기본 투사체 (GF Type) | 상대 가중치 (Weight) | 색상 코드 | 특수 효과 (Special Effect) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `0x01` (`1<<0`) | **Light** (빛) | `SKILL_R_LITE` (96) | `GF_LITE` | 400 | White (`L`) | 실명 (Blindness), 광원 점등 |
-| `0x02` (`1<<1`) | **Darkness** (어둠) | `SKILL_R_DARK` (97) | `GF_DARK` | 550 | Dark Gray (`A`) | 암흑화, 실명 유발 |
-| `0x04` (`1<<2`) | **Nexus** (넥서스) | `SKILL_R_NEXU` (98) | `GF_NEXUS` | 250 | Light Dark (`x`) | 텔레포트, 스탯 셔플 |
-| `0x08` (`1<<3`) | **Nether** (황천/네더) | `SKILL_R_NETH` (99) | `GF_NETHER` | 550 | Light Green (`n`) | 언데드 특화, 경험치 드레인 |
-| `0x10` (`1<<4`) | **Chaos** (혼돈) | `SKILL_R_CHAO` (100) | `GF_CHAOS` | 600 | Violet (`m`) | 환각, 랜덤 상태이상 |
-| `0x20` (`1<<5`) | **Mana** (마나) | `SKILL_R_MANA` (101) | `GF_MANA` | 600 | Light Blue (`N`) | 순수 마력 (무속성 관통) |
+TomeNET의 룬마법은 21개 원소를 길게 나열하는 직접 선택 메뉴나 번거로운 페이지 넘김(`?more`)을 일체 배제하고, 오직 **6개의 기본 룬(Fundamental Runes)** 만을 2회 순차 선택(`Rune 1` -> `Rune 2`)하여 21개 원소를 즉시 합성해내는 직관적인 조합 인터페이스를 사용합니다.
 
-### 3.2 복합 원소 조합 규칙 (15 Pairwise Combinations)
+| 단축키 (Key) | 비트값 (Bit) | 룬 명칭 (Rune) | 대응 스킬 (Skill ID) | 기본 투사체 (GF Type) | 상대 가중치 (Weight) | 색상 코드 | 특수 효과 (Special Effect) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `a` | `0x01` (`1<<0`) | **Light** (빛 / Lite) | `SKILL_R_LITE` (96) | `GF_LITE` | 400 | White (`L`) | 실명 (Blindness), 광원 점등 |
+| `b` | `0x02` (`1<<1`) | **Darkness** (어둠 / Dark) | `SKILL_R_DARK` (97) | `GF_DARK` | 550 | Dark Gray (`A`) | 암흑화, 실명 유발 |
+| `c` | `0x04` (`1<<2`) | **Nexus** (넥서스 / Nexu) | `SKILL_R_NEXU` (98) | `GF_NEXUS` | 250 | Light Dark (`x`) | 텔레포트, 스탯 셔플 |
+| `d` | `0x08` (`1<<3`) | **Nether** (황천 / Neth) | `SKILL_R_NETH` (99) | `GF_NETHER` | 550 | Light Green (`n`) | 언데드 특화, 경험치 드레인 |
+| `e` | `0x10` (`1<<4`) | **Chaos** (혼돈 / Chao) | `SKILL_R_CHAO` (100) | `GF_CHAOS` | 600 | Violet (`m`) | 환각, 랜덤 상태이상 |
+| `f` | `0x20` (`1<<5`) | **Mana** (마나 / Mana) | `SKILL_R_MANA` (101) | `GF_MANA` | 600 | Light Blue (`N`) | 순수 마력 (무속성 관통) |
 
-두 룬의 비트 OR 조합(`bor(R1, R2)`)으로 발현되는 원소입니다:
+### 3.2 비트 OR 원소 합성 테이블 (`bor(R1, R2)`)
 
-| R1 | R2 | 결합 원소 (Element) | 투사체 (GF Type) | 가중치 (Weight) | 상태이상 및 부가 효과 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| Light | Darkness | **Confusion** (혼란) | `GF_CONFUSION` | 400 | 적 혼란 |
-| Light | Nexus | **Inertia** (관성/감속) | `GF_INERTIA` | 200 | 적 감속 (Slow) |
-| Light | Nether | **Electricity** (전기) | `GF_ELEC` | **1200** | 고데미지, 민첩 드레인 |
-| Light | Chaos | **Fire** (화염) | `GF_FIRE` | **1200** | 고데미지, 힘 드레인 |
-| Light | Mana | **Water** (수류) | `GF_WATER` | 300 | 스턴, 혼란, 세척 |
-| Darkness | Nexus | **Gravity** (중력) | `GF_GRAVITY` | 150 | 공간왜곡, 스턴, 텔레포트 |
-| Darkness | Nether | **Cold** (냉기) | `GF_COLD` | **1200** | 고데미지, 힘 드레인, 포션 동결 |
-| Darkness | Chaos | **Acid** (산성) | `GF_ACID` | **1200** | 고데미지, 장비 부식, 매력 드레인 |
-| Darkness | Mana | **Poison** (독) | `GF_POIS` | 800 | 지속 독 데미지 |
-| Nexus | Nether | **Time** (시간) | `GF_TIME` | 150 | 시간 지연, 스탯/레벨 드레인 |
-| Nexus | Chaos | **Sound** (음파) | `GF_SOUND` | 400 | 적 충격 기절 (Stun) |
-| Nexus | Mana | **Shards** (파편) | `GF_SHARDS` | 400 | 적 출혈상처 (Cuts/Bleeding) |
-| Nether | Chaos | **Hellfire** (지옥불) | `GF_HELLFIRE` | 400 | 선 성향 극상성 관통 데미지 |
-| Nether | Mana | **Force** (역장) | `GF_FORCE` | 250 | 넉백 및 강한 스턴 |
-| Chaos | Mana | **Disenchant** (마해) | `GF_DISENCHANT`| 500 | 마법 취소/해제 (Cancellation) |
+두 룬의 비트 OR 조합(`bor(R1, R2)`)에 따라 정확히 21개(순수 6종 + 복합 15종) 원소가 결정됩니다:
+
+| R1 키 | R2 키 | R1 (Bit) | R2 (Bit) | 결합 원소 (Element) | 투사체 (GF Type) | 가중치 (Weight) | 상태이상 및 부가 효과 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `a` | `a` | Light | Light | **Light** (빛) | `GF_LITE` | 400 | 광원, 실명 유발 |
+| `b` | `b` | Dark | Dark | **Darkness** (어둠) | `GF_DARK` | 550 | 암흑화, 실명 유발 |
+| `c` | `c` | Nexus | Nexus | **Nexus** (넥서스) | `GF_NEXUS` | 250 | 텔레포트, 왜곡 |
+| `d` | `d` | Nether | Nether | **Nether** (황천) | `GF_NETHER` | 550 | 언데드 특효, 경험치 드레인 |
+| `e` | `e` | Chaos | Chaos | **Chaos** (혼돈) | `GF_CHAOS` | 600 | 환각, 혼돈 에너지 |
+| `f` | `f` | Mana | Mana | **Mana** (마나) | `GF_MANA` | 600 | 순수 마력 (무속성 관통) |
+| `a` | `b` | Light | Dark | **Confusion** (혼란) | `GF_CONFUSION` | 400 | 적 혼란 유발 |
+| `a` | `c` | Light | Nexus | **Inertia** (관성/감속) | `GF_INERTIA` | 200 | 적 감속 (Slow) |
+| `a` | `d` | Light | Nether | **Electricity** (전기) | `GF_ELEC` | **1200** | 고데미지 번개, 민첩 드레인 |
+| `a` | `e` | Light | Chaos | **Fire** (화염) | `GF_FIRE` | **1200** | 고데미지 화염, 인화물 연소 |
+| `a` | `f` | Light | Mana | **Water** (수류) | `GF_WATER` | 300 | 스턴, 혼란, 세척 |
+| `b` | `c` | Dark | Nexus | **Gravity** (중력) | `GF_GRAVITY` | 150 | 공간왜곡, 스턴, 중력파 |
+| `b` | `d` | Dark | Nether | **Cold** (냉기) | `GF_COLD` | **1200** | 고데미지 냉기, 포션 동결 |
+| `b` | `e` | Dark | Chaos | **Acid** (산성) | `GF_ACID` | **1200** | 고데미지 부식, 방어구 손상 |
+| `b` | `f` | Dark | Mana | **Poison** (독) | `GF_POIS` | 800 | 지속 독 데미지 |
+| `c` | `d` | Nexus | Nether | **Time** (시간) | `GF_TIME` | 150 | 시간 지연, 스탯/레벨 드레인 |
+| `c` | `e` | Nexus | Chaos | **Sound** (음파) | `GF_SOUND` | 400 | 적 충격 기절 (Stun) |
+| `c` | `f` | Nexus | Mana | **Shards** (파편) | `GF_SHARDS` | 400 | 적 출혈상처 (Cuts/Bleeding) |
+| `d` | `e` | Nether | Chaos | **Hellfire** (지옥불) | `GF_HELL_FIRE` | 400 | 화염 면역 무시 불경 데미지 |
+| `d` | `f` | Nether | Mana | **Force** (역장) | `GF_FORCE` | 250 | 넉백 및 강한 스턴 |
+| `e` | `f` | Chaos | Mana | **Disenchant** (마해) | `GF_DISENCHANT`| 500 | 마법 취소/해제 (Cancellation) |
 
 > **가중치(Weight) 의미**: 4대 기본원소(Fire, Cold, Elec, Acid)는 가중치 1200으로 최고 데미지를 내며, 유틸리티/희귀 원소(Gravity, Time, Inertia)는 150~200으로 낮은 데미지 대신 강력한 디버프를 동반합니다.
+
+### 3.3 TomeNET 정통 2단계 순차 룬 조합 인터페이스 (Authentic 2-Step Sequential Selection)
+
+초기 이식 프로토타입의 왜곡된 "21개 원소 직접 메뉴 선택(`?more`)"을 완전히 배제하고, 원작 TomeNET CUI의 정통 상호작용 규칙을 100% 충실하게 복원하였습니다.
+
+#### 1:1 대화형 프롬프트 시퀀스
+모바일 터치 키패드 또는 키보드에서 룬마법을 발동할 때 다음의 간결한 5단계 단축키 체인을 거칩니다:
+
+```
+[시작] '09m' 또는 'm' -> 'c' (Use Runespells)
+  │
+  ├─► [1] Rune 1: [a]Lite [b]Dark [c]Nexu [d]Neth [e]Chao [f]Mana:
+  │         └─► 단축키 'a'~'f' 입력 (예: 'a' Lite)
+  │
+  ├─► [2] Rune 2: [a]Lite [b]Dark [c]Nexu [d]Neth [e]Chao [f]Mana (same=pure):
+  │         └─► 단축키 'a'~'f' 입력 (Enter 시 Rune 1과 동일=순수 원소, 'e' 입력 시 Fire 합성)
+  │
+  ├─► [3] [Combined Element] Form: [b]olt be[e]m b[a]ll [c]loud [w]all [v]ave [s]torm [f]lare:
+  │         └─► 단축키 'b', 'e', 'a', 'c', 'w', 'v', 's', 'f' 입력 (예: 'b' Bolt)
+  │
+  ├─► [4] Mode: [m]od min[i] [l]eng com[p] [e]xpa [b]rief ma[x]:
+  │         └─► 단축키 'm', 'i', 'l', 'p', 'e', 'b', 'x' 입력 (예: 'm' Moderate, 'b' Brief 50% 에너지)
+  │
+  └─► [5] Direction (1-9):
+            └─► 방향 패드 1~9 입력 (자신 중심 시전 제외)
+```
+
+#### 모바일 터치 및 매크로 최적화 이점
+1. **극도의 입력 간결성**: 6개 키(`a`~`f`)만으로 21개 원소를 완전히 제어하므로 화면을 가리는 긴 메뉴 리스트나 페이지 스크롤(`?more`)이 필요 없습니다.
+2. **반복 입력(Rhythm)**: 순수 원소는 `a -> a`처럼 더블 탭으로 즉시 완성되며, `09maebm6` 입력 시 0.2초 안에 Moderate Fire Bolt 동쪽 발사가 완료됩니다.
+3. **하이브리드 Direct API**: 프로그래밍 매크로나 모바일 플로팅 버튼을 위해 두 개의 룬 문자를 직접 전달하는 API를 완벽 지원합니다:
+   - `do_runecraft("a", "e", "b", "m", 6)` -> Lite + Chao = Fire Bolt East
+   - `do_runecraft("fire", "b", "b", 6)` -> Brief Fire Bolt East
+   - `do_runecraft("a", "b", "m", 6)` -> Pure Lite Bolt East
 
 ---
 
@@ -198,13 +240,13 @@ $$\text{FixedDam} = \text{scale}\left(S, \text{Type.DamMin}, \frac{\text{Type.Da
 
 ```mermaid
 flowchart TD
-    Start["시전 시작 (m키 / 핫키)"] --> Step1["1. 룬 1 (R1) 선택 (Light..Mana)"]
-    Step1 --> Step2["2. 룬 2 (R2) 선택 (동일 룬 = 단일 속성)"]
-    Step2 --> Step3["3. 주문 모드 (Mode) 선택 (Mini..Maxi)"]
-    Step3 --> Step4["4. 주문 형태 (Type) 선택 (Bolt..Flare)"]
+    Start["시전 시작 ('09m' 또는 'm' -> 'c')"] --> Step1["1. 룬 1 (R1) 선택 [a-f] (Lite..Mana)"]
+    Step1 --> Step2["2. 룬 2 (R2) 선택 [a-f] (동일=순수, 이종=21원소 합성)"]
+    Step2 --> Step3["3. 주문 형태 (Form) 선택 [b/e/a/c/w/v/s/f] (Bolt..Storm)"]
+    Step3 --> Step4["4. 주문 모드 (Mode) 선택 [m/i/l/p/e/b/x] (Moderate..Brief)"]
     Step4 --> CheckDir{"방향(Direction) 필요 여부"}
-    CheckDir -- "Storm/Surge 제외" --> GetDir["방향 입력 (1-9 또는 타겟)"]
-    CheckDir -- "자신 중심" --> DirDone["방향 생략 (자신 중심)"]
+    CheckDir -- "Storm 제외" --> GetDir["방향 입력 (1-9 키패드)"]
+    CheckDir -- "Storm (자신 중심)" --> DirDone["방향 생략 (자신 중심)"]
     GetDir --> Eval["주문 유효성 검사 (Ability > 0, MP 충분)"]
     DirDone --> Eval
     Eval -- "불가" --> Abort["에너지 1/3 소모 및 안내 출력"]
