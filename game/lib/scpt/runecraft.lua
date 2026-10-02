@@ -78,14 +78,57 @@ RC_RUNE_COMBOS[bor(RC_RUNE_NETH, RC_RUNE_CHAO)] = "hell"
 RC_RUNE_COMBOS[bor(RC_RUNE_NETH, RC_RUNE_MANA)] = "forc"
 RC_RUNE_COMBOS[bor(RC_RUNE_CHAO, RC_RUNE_MANA)] = "dise"
 
+-- 6 Fundamental Runes (TomeNET Rune System)
+RC_RUNES = {
+    ["a"] = { id = 1,  key = "a", name = "Lite", full_name = "Light" },
+    ["b"] = { id = 2,  key = "b", name = "Dark", full_name = "Darkness" },
+    ["c"] = { id = 4,  key = "c", name = "Nexu", full_name = "Nexus" },
+    ["d"] = { id = 8,  key = "d", name = "Neth", full_name = "Nether" },
+    ["e"] = { id = 16, key = "e", name = "Chao", full_name = "Chaos" },
+    ["f"] = { id = 32, key = "f", name = "Mana", full_name = "Mana" },
+}
+
+RC_RUNES_BY_CHAR = {}
+RC_RUNES_BY_ID = {}
+for k, r in RC_RUNES do
+    RC_RUNES_BY_CHAR[strbyte(k)] = r
+    RC_RUNES_BY_CHAR[strbyte(strupper(k))] = r
+    RC_RUNES_BY_ID[r.id] = r
+end
+
+function rc_resolve_rune(val)
+    local b
+    if not val then return nil end
+    if type(val) == "string" then
+        val = strlower(val)
+        if RC_RUNES[val] then return RC_RUNES[val] end
+        if strlen(val) == 1 then
+            b = strbyte(val)
+            if RC_RUNES_BY_CHAR[b] then return RC_RUNES_BY_CHAR[b] end
+        end
+        for _, r in RC_RUNES do
+            if strlower(r.name) == val or strlower(r.full_name) == val then
+                return r
+            end
+        end
+    elseif type(val) == "number" then
+        if RC_RUNES_BY_ID[val] then return RC_RUNES_BY_ID[val] end
+        if RC_RUNES_BY_CHAR[val] then return RC_RUNES_BY_CHAR[val] end
+    elseif type(val) == "table" and val.id then
+        return val
+    end
+    return nil
+end
+
 function runecraft_combine(r1, r2)
     local combo_key, elem_id
+    if not r1 or not r2 then return nil end
     combo_key = bor(r1, r2)
     elem_id = RC_RUNE_COMBOS[combo_key]
     if elem_id and RC_ELEMENTS[elem_id] then
         return RC_ELEMENTS[elem_id]
     end
-    return RC_ELEMENTS["mana"]
+    return nil
 end
 
 -- -------------------------------------------------------------------------
@@ -188,12 +231,14 @@ end
 -- -------------------------------------------------------------------------
 -- 5. Core Runecraft Spellcaster Engine
 -- -------------------------------------------------------------------------
-function do_runecraft(opt_rune, opt_form, opt_mode, opt_dir)
+function do_runecraft(arg1, arg2, arg3, arg4, arg5)
     local skill, elem, form, mode, lvl, ability, base_cost, mana_cost
     local base_fail, int_idx, dex_idx, int_bonus, dex_bonus, stat_bonus, fail_rate
     local int_min, dex_min, min_fail, weight_mul, damage, rad, time
     local spell_failed, backlash, target_dir, ret, c, dir, fail_adverb
     local dice_x, dice_y
+    local opt_form, opt_mode, opt_dir
+    local r1, r2, c1, c2
 
     -- [Precondition Checks]
     if player.confused > 0 then
@@ -215,24 +260,60 @@ function do_runecraft(opt_rune, opt_form, opt_mode, opt_dir)
         return
     end
 
-    -- [Step 1: Element Selection]
-    elem = rc_resolve_element(opt_rune)
+    -- [Step 1: Element Resolution (API or Interactive)]
+    elem = rc_resolve_element(arg1)
+    if elem then
+        -- Direct element passed: do_runecraft("fire", form, mode, dir)
+        opt_form = arg2
+        opt_mode = arg3
+        opt_dir = arg4
+    else
+        r1 = rc_resolve_rune(arg1)
+        r2 = rc_resolve_rune(arg2)
+        if r1 and r2 then
+            -- Two runes passed: do_runecraft("a", "e", form, mode, dir)
+            elem = runecraft_combine(r1.id, r2.id)
+            opt_form = arg3
+            opt_mode = arg4
+            opt_dir = arg5
+        elseif r1 and rc_resolve_form(arg2) then
+            -- Single rune passed with form (pure element: r1 + r1)
+            elem = runecraft_combine(r1.id, r1.id)
+            opt_form = arg2
+            opt_mode = arg3
+            opt_dir = arg4
+        end
+    end
+
+    -- If not yet resolved, prompt interactively: 2-step Rune selection
     if not elem then
-        ret, c = get_com("Rune: [f]ire [c]old [e]lec [a]cid [p]ois [l]ite [d]ark [?]more: ", strbyte("f"))
+        ret, c1 = get_com("Rune 1: [a]Lite [b]Dark [c]Nexu [d]Neth [e]Chao [f]Mana: ", strbyte("a"))
         if not ret then
             energy_use = 0
             return
         end
-        if c == strbyte("?") then
-            ret, c = get_com("[n]eth c[h]ao [m]ana ne[x]us [s]ound sha[r]ds f[o]rce [g]rav [i]nert [t]ime conf[u]s [k]disen [j]hell [w]ater: ", strbyte("m"))
-            if not ret then
-                energy_use = 0
-                return
-            end
+        r1 = rc_resolve_rune(c1)
+        if not r1 then
+            msg_print("Unknown rune.")
+            energy_use = 0
+            return
         end
-        elem = rc_resolve_element(c)
+
+        ret, c2 = get_com("Rune 2: [a]Lite [b]Dark [c]Nexu [d]Neth [e]Chao [f]Mana (same=pure): ", c1)
+        if not ret then
+            energy_use = 0
+            return
+        end
+        r2 = rc_resolve_rune(c2)
+        if not r2 then
+            msg_print("Unknown rune.")
+            energy_use = 0
+            return
+        end
+
+        elem = runecraft_combine(r1.id, r2.id)
         if not elem then
-            msg_print("Unknown rune element.")
+            msg_print("Failed to combine runes.")
             energy_use = 0
             return
         end
@@ -241,7 +322,7 @@ function do_runecraft(opt_rune, opt_form, opt_mode, opt_dir)
     -- [Step 2: Form Selection]
     form = rc_resolve_form(opt_form)
     if not form then
-        ret, c = get_com("Form: [b]olt be[e]m b[a]ll [c]loud [w]all [v]ave [s]torm [f]lare: ", strbyte("b"))
+        ret, c = get_com(format("[%s] Form: [b]olt be[e]m b[a]ll [c]loud [w]all [v]ave [s]torm [f]lare: ", elem.name), strbyte("b"))
         if not ret then
             energy_use = 0
             return

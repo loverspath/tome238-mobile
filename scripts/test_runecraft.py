@@ -4,9 +4,9 @@ Automated regression test for ToME 2.3.8-ah Adventurer TomeNET Runecraft integra
 Guarantees that:
 1. Adventurer class starts with Runecraft skill (skill id 34).
 2. Command '09m' and skill menu 'm' -> 'c' trigger Lua MKEY 9 hook intercepting the legacy C runecrafter.
-3. Interactive Runecraft prompts (Element -> Form -> Mode -> Direction) function correctly:
-   - Moderate Fire Bolt ('09m' -> 'f' -> 'b' -> 'm' -> '6') casts cleanly and consumes mana.
-   - Brief Fire Bolt ('09m' -> 'f' -> 'b' -> 'b' -> '6') operates with half-turn energy cost.
+3. Interactive Runecraft prompts (Rune 1 -> Rune 2 -> Form -> Mode -> Direction) function correctly:
+   - Moderate Fire Bolt ('09m' -> 'a' -> 'e' -> 'b' -> 'm' -> '6') casts cleanly and consumes mana.
+   - Brief Fire Bolt ('09m' -> 'a' -> 'e' -> 'b' -> 'b' -> '6') operates with half-turn energy cost.
 4. Higher-tier forms enforce skill level prerequisites ("Your skill is not high enough!").
 5. ESC cancellation returns cleanly to normal game state without consuming mana or freezing.
 6. Skill menu list 'm' correctly lists 'c - 9) Use Runespells'.
@@ -114,20 +114,26 @@ def run_runecraft_tests():
         print("  -> Adventurer successfully spawned in world.")
 
         # =====================================================================
-        # Test Case 1: Cast Moderate Fire Bolt eastward via '09m'
+        # Test Case 1: Cast Moderate Fire Bolt eastward via '09m' (Rune 1: a, Rune 2: e)
         # =====================================================================
         print("\n[Test 1] Invoking '09m' -> Moderate Fire Bolt eastward...")
         # Send 09m to trigger MKEY_RUNE
         out1, dead, _ = send_and_drain(b"09m", delay=0.35)
         if dead: return False, "Process died on '09m'"
-        if "Rune:" not in out1:
-            return False, f"Expected Rune prompt on '09m', got:\n{out1}"
+        if "Rune 1:" not in out1:
+            return False, f"Expected Rune 1 prompt on '09m', got:\n{out1}"
 
-        # Send Rune choice: 'f' (Fire)
-        out2, dead, _ = send_and_drain(b"f", delay=0.35)
-        if dead: return False, "Process died on rune element selection 'f'"
-        if "Form:" not in out2:
-            return False, f"Expected Form prompt, got:\n{out2}"
+        # Send Rune 1 choice: 'a' (Lite)
+        out2, dead, _ = send_and_drain(b"a", delay=0.35)
+        if dead: return False, "Process died on Rune 1 selection 'a'"
+        if "Rune 2" not in out2 and "same=pure" not in out2:
+            return False, f"Expected Rune 2 prompt, got:\n{out2}"
+
+        # Send Rune 2 choice: 'e' (Chao) -> Lite + Chao = Fire
+        out2b, dead, _ = send_and_drain(b"e", delay=0.35)
+        if dead: return False, "Process died on Rune 2 selection 'e'"
+        if "Form:" not in out2b or "Fire" not in out2b:
+            return False, f"Expected [Fire] Form prompt, got:\n{out2b}"
 
         # Send Form choice: 'b' (Bolt)
         out3, dead, _ = send_and_drain(b"b", delay=0.35)
@@ -158,13 +164,18 @@ def run_runecraft_tests():
 
         out_b1, dead, _ = send_and_drain(b"09m", delay=0.35)
         if dead: return False, "Process died on Brief bolt '09m'"
-        if "Rune:" not in out_b1:
-            return False, f"Expected Rune prompt on '09m' in Test 2, got:\n{out_b1}"
+        if "Rune 1:" not in out_b1:
+            return False, f"Expected Rune 1 prompt on '09m' in Test 2, got:\n{out_b1}"
 
-        out_b2, dead, _ = send_and_drain(b"f", delay=0.35) # Fire
-        if dead: return False, "Process died selecting Fire in Test 2"
-        if "Form:" not in out_b2:
-            return False, f"Expected Form prompt in Test 2, got:\n{out_b2}"
+        out_b2, dead, _ = send_and_drain(b"a", delay=0.35) # Lite
+        if dead: return False, "Process died selecting Lite in Test 2"
+        if "Rune 2" not in out_b2 and "same=pure" not in out_b2:
+            return False, f"Expected Rune 2 prompt in Test 2, got:\n{out_b2}"
+
+        out_b2b, dead, _ = send_and_drain(b"e", delay=0.35) # Chao -> Fire
+        if dead: return False, "Process died selecting Chao in Test 2"
+        if "Form:" not in out_b2b:
+            return False, f"Expected Form prompt in Test 2, got:\n{out_b2b}"
 
         out_b3, dead, _ = send_and_drain(b"b", delay=0.35) # Bolt
         if dead: return False, "Process died selecting Bolt in Test 2"
@@ -192,13 +203,18 @@ def run_runecraft_tests():
 
         out_s1, dead, _ = send_and_drain(b"09m", delay=0.35)
         if dead: return False, "Process died on '09m' in Test 3"
-        if "Rune:" not in out_s1:
-            return False, f"Expected Rune prompt on '09m' in Test 3, got:\n{out_s1}"
+        if "Rune 1:" not in out_s1:
+            return False, f"Expected Rune 1 prompt on '09m' in Test 3, got:\n{out_s1}"
 
-        out_s2, dead, _ = send_and_drain(b"f", delay=0.35) # Fire
-        if dead: return False, "Process died selecting Fire in Test 3"
-        if "Form:" not in out_s2:
-            return False, f"Expected Form prompt in Test 3, got:\n{out_s2}"
+        out_s2, dead, _ = send_and_drain(b"a", delay=0.35) # Lite
+        if dead: return False, "Process died selecting Lite in Test 3"
+        if "Rune 2" not in out_s2 and "same=pure" not in out_s2:
+            return False, f"Expected Rune 2 prompt in Test 3, got:\n{out_s2}"
+
+        out_s2b, dead, _ = send_and_drain(b"e", delay=0.35) # Chao -> Fire
+        if dead: return False, "Process died selecting Chao in Test 3"
+        if "Form:" not in out_s2b:
+            return False, f"Expected Form prompt in Test 3, got:\n{out_s2b}"
 
         out_s3, dead, _ = send_and_drain(b"s", delay=0.35) # Storm (base_lvl = 22)
         if dead: return False, "Process died selecting Storm in Test 3"
@@ -221,8 +237,8 @@ def run_runecraft_tests():
 
         out_c1, dead, _ = send_and_drain(b"09m", delay=0.35)
         if dead: return False, "Process died on '09m' in Test 4"
-        if "Rune:" not in out_c1:
-            return False, f"Expected Rune prompt in Test 4, got:\n{out_c1}"
+        if "Rune 1:" not in out_c1:
+            return False, f"Expected Rune 1 prompt in Test 4, got:\n{out_c1}"
 
         out_c2, dead, _ = send_and_drain(b"\x1b", delay=0.35) # Cancel with ESC
         if dead: return False, "Process died on ESC cancellation"
@@ -246,8 +262,8 @@ def run_runecraft_tests():
 
         out_m2, dead, _ = send_and_drain(b"c", delay=0.35) # Select Runecraft
         if dead: return False, "Process died selecting skill 'c'"
-        if "Rune:" not in out_m2:
-            return False, f"Expected 'Rune:' prompt upon selecting 'c', got:\n{out_m2}"
+        if "Rune 1:" not in out_m2:
+            return False, f"Expected 'Rune 1:' prompt upon selecting 'c', got:\n{out_m2}"
 
         # Cleanly exit via ESC
         send_and_drain(b"\x1b", delay=0.2)
