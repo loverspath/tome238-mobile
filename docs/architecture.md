@@ -568,27 +568,107 @@ Full audit results are documented in [`docs/decoupling_checkpoint.md`](file:///d
 
 ---
 
-## 8. Local Multi-Process Architecture & Feasibility
+## 8. Real-Time Multi-Process Client-Server Architecture (TomeNET)
 
-TomeNET (and similar C/S roguelikes) requires both a server daemon and an interactive client. Feasibility analysis on Android Termux ARM64 is detailed in [`docs/multiprocess_feasibility.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/multiprocess_feasibility.md):
+TomeNET (and similar multiplayer C/S roguelikes) operates on a distributed client-server model rather than a monolithic binary. In our native Termux web terminal architecture, we provide first-class support for C/S gameplay through an automated, zero-touch supervision and background daemon pipeline:
 
-### 8.1 Verified Feasibility Metrics
-- **Build Compatibility**: Compiles cleanly with Termux Clang, `libncursesw`, `libcrypt`, and `libm`.
-- **Loopback Socket Latency**: Android kernel `127.0.0.1` loopback latency is `< 0.2ms` with zero non-root permission hurdles.
-- **Resource Footprint**: Server + Client combined RSS memory is `< 50MB`, and idle CPU is `< 2%` on typical modern mobile ARM64 SoCs.
+```mermaid
+flowchart TD
+    subgraph ClientTier["Mobile Frontend Tier"]
+        Browser["Mobile Browser (Chrome / Safari / Firefox)"]
+        TouchUI["Virtual AdvKeyboard & Floating D-Pad"]
+        Xterm["Xterm.js Canvas (80x24 Monospace Grid)"]
+        Browser --- TouchUI
+        Browser --- Xterm
+    end
 
-### 8.2 Process Supervision Model
+    subgraph HostTier["PTY Transport Shell (web/server.py)"]
+        WS["WebSocket Endpoint (/ws)"]
+        RingBuf["64KB Circular Ring Buffer"]
+        PTY["PTY Master / Slave Pair (pty.openpty)"]
+        Mgr["CompanionServerManager<br>(Zero-Touch Daemon Supervisor)"]
+        Watcher["Account Validation Watcher<br>(Async 1.5s Loop / fcntl Lock)"]
+        WS <--> RingBuf
+        RingBuf <--> PTY
+        Mgr -.->|Spawns & Healthchecks| SrvDaemon
+        Watcher -.->|Auto-promotes ACC_TRIAL| AccFile[("tomenet.acc<br>(336-byte Records)")]
+    end
+
+    subgraph ProcessTier["Native C/S Binaries (Termux aarch64)"]
+        ClientBin["TomeNET CUI Client (tomenet -c -i -p18348)<br>[Interactive Foreground PTY Child]"]
+        SrvDaemon["TomeNET Server Daemon (tomenet.server)<br>[Background Process Group / setsid]"]
+        PTY <-->|Bidirectional I/O Stream| ClientBin
+        ClientBin <-->|Local Loopback TCP: 18348<br>(&lt; 0.2ms Latency)| SrvDaemon
+        SrvDaemon <-->|Account DB Persistence| AccFile
+    end
+
+    Xterm <-->|WebSocket Binary/Text Frames| WS
+    TouchUI -.->|Touch Keystrokes| WS
 ```
-┌──────────────────────────────────────────────────────────┐
-│ Python Transport Shell (server.py)                       │
-│  ├─ Supervised Companion Daemon: tomenet.server (127.0.0.1)│
-│  └─ Foreground Child PTY:        tomenet -c (GCU Client) │
-│      └─ Bidirectional Stream <───> WebSocket (/ws)       │
-└──────────────────────────────────────────────────────────┘
+
+### 8.1 Dual-Process Orchestration Model & Profile Schema
+The client-server integration is defined declaratively in [`profiles/tomenet.json`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/tomenet.json):
+```json
+{
+  "id": "tomenet",
+  "name": "TomeNET 4.9.4 (Real-time C/S)",
+  "title": "TomeNET 4.9.4 Mobile Terminal",
+  "executable": "ref_repos/tomenet/tomenet",
+  "args": ["-c", "-i", "-p18348", "-q", "127.0.0.1"],
+  "cwd": "ref_repos/tomenet",
+  "companion": {
+    "executable": "ref_repos/tomenet/tomenet.server",
+    "cwd": "ref_repos/tomenet",
+    "port": 18348
+  },
+  "geometry": { "cols": 80, "rows": 24 },
+  "fixed_geometry": true,
+  "redraw_key": "\u0012"
+}
 ```
-- **Concealment**: The web client only interacts with the client PTY stream; the background server process is completely transparent to the user.
-- **Metaserver Isolation**: `REPORT_TO_METASERVER = false` is enforced in `tomenet.cfg` to prevent advertising single-player local games to the public Internet.
-- **Cascading Teardown**: Upon session termination or 300-second idle disconnect, `server.py` guarantees clean shutdown of both processes (`SIGTERM` -> 200ms grace -> `SIGKILL`).
+- **Concealment & Seamless UI**: The mobile player connects to the standard web UI. The frontend interacts strictly with the client CUI process attached to the PTY slave. The background server daemon operates completely transparently.
+- **Metaserver Isolation**: `REPORT_TO_METASERVER = false` is enforced in `tomenet.cfg`, preventing private local mobile sessions from leaking onto public server directories.
+
+### 8.2 `CompanionServerManager` Zero-Touch Lifecycle Management & Port Healthcheck
+In [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py), the `CompanionServerManager` class orchestrates background server processes:
+1. **Idempotent Readiness Check (`ensure_running`)**:
+   - Before launching the client PTY child, `server.py` queries `companion_manager.ensure_running(profile["companion"])`.
+   - If port 18348 is already open and responding (e.g. from an existing active daemon), it bypasses startup and starts the account watcher.
+2. **Process Group Daemonization & Logging**:
+   - Spawns `tomenet.server` with `preexec_fn=os.setsid` to assign it a distinct process group.
+   - Redirects all daemon stdout and stderr into `server_daemon.log` inside the working directory.
+3. **High-Frequency Port Healthcheck**:
+   - Polls `is_port_open("127.0.0.1", port)` non-blockingly using brief TCP socket connections every 100ms.
+   - Requires confirmed socket connection within a 10.0-second timeout window before allowing the client to execute.
+4. **Cascading Process Teardown (`shutdown`)**:
+   - On server shutdown or session cleanup, `CompanionServerManager.shutdown()` issues `SIGTERM` to the entire process group (`os.killpg(os.getpgid(pid), signal.SIGTERM)`).
+   - Grants a 3.0-second graceful flush window before escalating to `SIGKILL`.
+
+### 8.3 Account Validation Pipeline (`ACC_TRIAL` -> `ACC_ADMIN` Auto-Promotion)
+TomeNET servers enforce account-based authentication. By default, newly registered accounts receive a trial restriction bit (`ACC_TRIAL = 0x00000001`), which prevents player characters from entering the dungeon without administrator validation via `accedit`. On a mobile device, requiring players to leave the web app and run terminal admin tools breaks immersion.
+
+We resolved this with a real-time binary account auto-validation pipeline:
+
+1. **336-Byte Struct Account Binary Layout**:
+   - On 64-bit Linux/Android, `struct account` in `lib/save/tomenet.acc` occupies exactly 336 bytes per record:
+     - `Offset 0` (`uint32`): Account ID (`acc_id`)
+     - `Offset 4` (`uint32`): Account Flags (`ACC_TRIAL=0x01`, `ACC_ADMIN=0x02`, `ACC_MULTI=0x04`, `ACC_NOSCORE=0x08`, `ACC_BANNED=0x4000`, `ACC_DELD=0x8000`)
+     - `Offset 8..37` (`char[30]`): Account Name (null-terminated latin1)
+     - `Offset 38..67` (`char[30]`): Normalized Account Name (lowercase)
+     - `Offset 68..87` (`char[20]`): Password hash and security salts
+2. **Asynchronous Account Watcher (`_watch_loop`)**:
+   - Built into `CompanionServerManager`: runs an asynchronous loop checking `tomenet.acc` every 1.5 seconds.
+   - Uses non-blocking exclusive file locking (`fcntl.flock(f, fcntl.LOCK_EX)`) to avoid race conditions with `tomenet.server`.
+   - Scans records for `flags & ACC_TRIAL`; when detected, it masks out the trial bit (`new_flags = flags & (~ACC_TRIAL)`), writes the updated binary record in-place, flushes to disk, and logs:
+     `[CompanionServerManager] Auto-validated TomeNET account '<name>' (ACC_TRIAL cleared)`.
+3. **CLI Account Management Utility ([`scripts/tomenet_acc.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/tomenet_acc.py))**:
+   - Native Python tool providing comprehensive admin control over `tomenet.acc`:
+     - `python3 scripts/tomenet_acc.py --list`: Formats active accounts, IDs, and status flags.
+     - `python3 scripts/tomenet_acc.py --validate [name]`: Manually validates specific or all trial accounts.
+     - `python3 scripts/tomenet_acc.py --admin <name>`: Grants in-game Dungeon Master (`ACC_ADMIN = 0x02`) privileges.
+     - `python3 scripts/tomenet_acc.py --watch`: Standalone watcher daemon for headless server setups.
+4. **Native C `accedit` Compatibility**:
+   - Upstream `ref_repos/tomenet/accedit` was compiled directly on Termux aarch64, verifying 100% binary compatibility between the C tool and our Python binary parser.
 
 ---
 

@@ -23,6 +23,8 @@ All operations can be executed from the project root (`/data/data/com.termux/fil
 | **Portability Test**     | `python3 scripts/test_portability.py` | Proves generic terminal shell decoupling using standalone C demo without ToME dependencies. |
 | **Crash Pipeline Test**  | `python3 scripts/test_crash_pipeline.py` | Asserts PTY abnormal exit detection, 4KB stderr capture, and structured WebSocket `crash` event dispatch. |
 | **Ctrl+S Save Test**     | [`python3 scripts/test_ctrl_s.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_ctrl_s.py) | Headless PTY test validating in-game Ctrl+S save flow, disk persistence, and termios IXON/XOFF flow control bypass. |
+| **TomeNET Account Manager** | [`python3 scripts/tomenet_acc.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/tomenet_acc.py) | CLI utility to inspect accounts (`--list`), auto-validate trial accounts (`--validate`), grant admin privileges (`--admin`), or watch accounts in real-time (`--watch`). |
+| **Run TomeNET C/S Web** | `./run_web 8080 profiles/tomenet.json` | Launches web terminal using TomeNET C/S profile with companion background server daemon (`tomenet.server`). |
 
 ---
 
@@ -38,8 +40,9 @@ tome238-mobile/
 ├── restart                 # Daemon manager & restart script
 ├── test                    # Master test runner (executes all 6 test suites sequentially)
 ├── profiles/               # Declarative game and application profiles (JSON)
-│   ├── tome238.json        # Official ToME 2.3.8-ah profile
-│   └── portability_demo.json # Standalone C portability proof profile
+│   ├── tome238.json        # Official ToME 2.3.8-ah single-player profile
+│   ├── portability_demo.json # Standalone C portability proof profile
+│   └── tomenet.json        # Official TomeNET 4.9.4 real-time C/S profile with companion daemon
 ├── docs/                   # Architectural, design, and gameplay specifications
 │   ├── architecture.md     # Full system architecture (PTY bridge, ring buffer, Web UI, Crash Diagnostics)
 │   ├── decoupling_checkpoint.md # Decoupling audit & generic shell architecture checkpoint
@@ -80,7 +83,8 @@ tome238-mobile/
     ├── test_web.py         # Web endpoints & WebSocket streaming test
     ├── test_portability.py # Decoupled shell portability test
     ├── test_crash_pipeline.py # Crash detection and diagnostic pipeline test
-    └── test_ctrl_s.py      # In-game Ctrl+S save and flow control regression test
+    ├── test_ctrl_s.py      # In-game Ctrl+S save and flow control regression test
+    └── tomenet_acc.py      # 336-byte binary account parser, auto-validator & admin CLI
 ```
 
 ---
@@ -102,6 +106,12 @@ External reference repositories are cloned at `/data/data/com.termux/files/home/
     - Ghost / translucent overlay modes for managing mobile screen estate.
 
 ### 2. `TomenetGame/tomenet` (`/data/data/com.termux/files/home/ref_repos/tomenet`)
+- **Native C/S Binaries on Termux aarch64**:
+  - `tomenet`: Interactive CUI curses client (`tomenet -c -i -p18348 -q 127.0.0.1`).
+  - `tomenet.server`: Dedicated background game server daemon managed via `CompanionServerManager`.
+  - `accedit`: Native C account editor utility compiled directly from upstream sources (`src/account/accedit.c`).
+- **Account Binary Structure (`lib/save/tomenet.acc`)**:
+  - 336-byte packed records (`struct account`): Account ID (u32), flags (u32, `ACC_TRIAL=0x01`, `ACC_ADMIN=0x02`), name (30 bytes), normalized name (30 bytes), password hash.
 - **Runecraft Engine Archaeology (`lib/scpt/runecraft.lua`, `src/server/runecraft.c`, `src/common/defines.h`)**:
   - Ground truth for the Runecraft/Runemastery spell combination mechanics.
   - Defines the 32-bit spell bitmask: `R1 | (R2 << 8) | (MODE << 16) | (TYPE << 24)`.
@@ -133,7 +143,7 @@ External reference repositories are cloned at `/data/data/com.termux/files/home/
 - **Modifier Machine**: Sticky toggles for `Shift`, `Ctrl`, and `RUN` (`.` + direction).
 - **Ghost Mode**: 3-state toggle (Opaque -> 30% Ghost Translucent -> Hidden) to free up visual space during exploration.
 
-### Phase 4: Mobile UI/UX Hierarchy, Neon Cyan AdvKeyboard & Diagnostics (Active)
+### Phase 4: Mobile UI/UX Hierarchy, Neon Cyan AdvKeyboard & Diagnostics (Complete)
 - **Visual & Source Audit**: Reverse engineered 8 native Angbandroid screenshots and matching Java sources (`GameActivity.java`, `TermView.java`, `AdvKeyboard.java`, `Preferences.java`, `preferences.xml`, `fab_crud.xml`).
 - **Master Plan Specification**: Authored [`docs/mobile_ui_ux_plan.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/mobile_ui_ux_plan.md) covering the 16-item Quick Settings menu, 3-category Preferences system, 5x10 neon cyan keycap matrix, viewport auto-fit equations (`Fit Width`/`Fit Height`), and draggable 3x3 D-Pad/FAB engine.
 - **Neon Cyan Glassmorphism**: Translucent dark glass keyboard styling with `#00e5ff` cyan text glow and responsive keycaps.
@@ -146,6 +156,16 @@ External reference repositories are cloned at `/data/data/com.termux/files/home/
 - **Floating Action Buttons, Ribbon Customizer, F-Key Palette & Esc Keycap**: Implemented draggable floating action buttons layer (`#floating-buttons-layer`, `localStorage: tome_floating_buttons`, 6px drag threshold, long-press editor), customizable action ribbon (`#btn-ribbon-add`, `localStorage: tome_custom_ribbon`, quick reset action), universal polymorphic button and macro editor (`#keymap-modal`, 2×6 F1~F12 grid, `{F1}`~`{F12}` token parser, special escape tokens, macro chips), and AdvKeyboard Row 4 keycap replacement (`↺` Redo -> `⎋` Esc with automatic Shift/pagination reset).
 - **Floating Button Manager, Presets System, Keyboard Toggle & Simple 3-Row Keyboard**: Implemented floating buttons manager dialog (`#manage-fb-modal`, item list, live coordinate inspection, edit/delete, 1-tap batch purge), layout & macro presets engine (`#presets-modal`, 3 built-in profiles: Default, Minimal Touch, Compact 3-Row, custom preset creation/storage under `tome_presets`), top-bar single-tap keyboard visibility toggle (`#btn-toggle-keyboard` with `.active-toggled` amber indicator and 100% viewport expansion), and 3-row compact simple keyboard (`simple_portrait`, `simple_landscape`, 22vh compact height, top-bar `#btn-switch-kbd-style` switcher).
 - **Unified 6-Stage Test Suite**: Integrated all test suites into master runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) (CLI Smoke -> Birth Flow -> Web Integration -> Shell Portability -> Crash Pipeline -> Ctrl+S Save).
+
+### Phase 5: TomeNET Real-Time Client-Server Integration & Companion Server Daemon (Active)
+- **TomeNET Real-Time C/S Profile (`profiles/tomenet.json`)**: Configured dedicated profile launching the interactive CUI client (`tomenet -c -i -p18348 -q 127.0.0.1`) under PTY supervision with `companion` daemon configuration (`tomenet.server`, port 18348).
+- **Zero-Touch Companion Server Supervisor (`web/server.py`)**: Implemented `CompanionServerManager` to manage the background `tomenet.server` daemon:
+  - Spawns background process with process group isolation (`os.setsid`) and directs server output to `server_daemon.log`.
+  - Performs non-blocking TCP socket health checks on port 18348 every 100ms (up to 10.0s timeout) to ensure server readiness before client connection.
+  - Guarantees clean cascading termination (`SIGTERM` -> 3s timeout -> `SIGKILL` to process group).
+- **TomeNET Binary Account Parser & CLI Utility (`scripts/tomenet_acc.py`)**: Developed standalone Python tool and 336-byte binary record parser for `tomenet.acc` with POSIX file locking (`fcntl.flock`). Supports `--list` account inspection, `--validate` trial promotion (`ACC_TRIAL` bit clear), `--admin` privilege escalation (`ACC_ADMIN` bit set), and `--watch` real-time monitoring.
+- **Real-Time Account Auto-Validation Pipeline**: Integrated an asynchronous background watcher (`start_account_watcher` / `_watch_loop`) in `CompanionServerManager` polling `tomenet.acc` every 1.5 seconds. Newly registered accounts automatically have `ACC_TRIAL` (0x01) cleared in real time, removing all manual GM/admin intervention friction for mobile players.
+- **Native Termux C Toolchain Verification**: Successfully built upstream `accedit`, `tomenet.server`, and `tomenet` CUI client on Termux aarch64.
 
 ---
 
@@ -161,20 +181,27 @@ The project strictly follows a **two-tier decoupled architecture**:
    - Defines game-specific parameters in declarative JSON schema:
      - `id`, `name`, `title`, `brand`: Branding and browser window title.
      - `executable`, `args`, `cwd`, `env`: Process spawn command, working directory, and environment variables.
+     - `companion`: Background server daemon parameters (`executable`, `cwd`, `port`) managed via `CompanionServerManager`.
      - `geometry`: Terminal dimensions (`cols`, `rows`, default 80x24).
+     - `fixed_geometry`: Clamping flag enforcing strict grid geometry.
      - `redraw_key`: Screen refresh keystroke (`\x12` for ToME, `\x0c` for standard curses/sh).
      - `keyboard_config`: Target virtual keyboard layout definition (`keyboards.json`).
      - `context_rules`: Regex sniffer rules for dynamic prompt button injection.
+   - **Three Supported Profiles**:
+     1. [`profiles/tome238.json`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/tome238.json): Official ToME 2.3.8-ah single-player profile with curses GCU driver and 64KB ring buffer.
+     2. [`profiles/portability_demo.json`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/portability_demo.json): Ultra-lightweight standalone C demo profile proving shell decoupling with zero external dependencies.
+     3. [`profiles/tomenet.json`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/tomenet.json): Real-time multiplayer C/S architecture profile managing a dual-tier client/server setup on loopback port 18348 with automated account validation.
    - Loaded via CLI: `python3 web/server.py --profile profiles/tome238.json`.
    - Exposed to frontend dynamically via `GET /api/profile`.
 
-### Multi-Process Game Preparation (TomeNET Server + Client Local Hosting)
-As investigated and verified in [`docs/multiprocess_feasibility.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/multiprocess_feasibility.md):
-- **Local Loopback Transport**: Termux ARM64 allows non-root binding and connection over `127.0.0.1` (<0.2ms latency).
+### Multi-Process Game Architecture (TomeNET Server + Client Local Hosting)
+As investigated in [`docs/multiprocess_feasibility.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/multiprocess_feasibility.md) and fully implemented in `profiles/tomenet.json`:
+- **Local Loopback Transport**: Termux ARM64 allows non-root binding and connection over `127.0.0.1:18348` (<0.2ms latency).
 - **Process Orchestration Model**:
-  - The PTY host (`server.py`) attaches directly to the interactive client process (`tomenet -c -f client.cfg 127.0.0.1 ...`).
-  - The local server process (`tomenet.server`) is spawned as a background companion daemon.
-  - **Metaserver Isolation**: Must configure `REPORT_TO_METASERVER = false` in `tomenet.cfg` to prevent public broadcast of private local mobile runs.
+  - The PTY host (`server.py`) attaches directly to the interactive client process (`tomenet -c -i -p18348 -q 127.0.0.1`).
+  - The local server process (`tomenet.server`) is spawned and supervised as a background companion daemon by `CompanionServerManager`.
+  - **Account Auto-Validation**: An asynchronous background watcher monitors `lib/save/tomenet.acc` every 1.5s, clearing `ACC_TRIAL` (`0x01`) automatically upon creation.
+  - **Metaserver Isolation**: Configured `REPORT_TO_METASERVER = false` in `tomenet.cfg` to prevent public broadcast of private local mobile runs.
   - **Cascade Lifecycle**: When the client session disconnects or expires, `server.py` cleans up both the client PTY and the background server daemon via `SIGTERM` followed by `SIGKILL`.
 - **Full Audit Reference**: See [`docs/decoupling_checkpoint.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/decoupling_checkpoint.md) for the 20-point coupling audit matrix (`GENERIC`, `CONFIG`, `ADAPTER`, `LEAVE ALONE`).
 
