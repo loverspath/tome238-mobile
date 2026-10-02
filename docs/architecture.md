@@ -18,57 +18,77 @@ flowchart TD
         Xterm["Xterm.js Canvas Engine<br>(80x24 VT100 Terminal)"]
         
         subgraph Touch_UI["Touch Controls & UX"]
-            DPad["3x3 D-Pad<br>(Pointer Events + 300ms/75ms Auto-repeat)"]
-            ActionRibbon["Action Ribbon<br>(Esc, Enter, Space, Rest, Magic, etc.)"]
-            Sniffer["Context Sniffer<br>(Screen Buffer Regex -> Dynamic y/n)"]
-            Modifiers["Modifier State Machine<br>(Shift / Ctrl / RUN)"]
-            GhostToggle["Ghost Mode Controller<br>(Opaque / 30% Ghost / Hidden)"]
+            AdvKeyboard["AdvKeyboard Virtual Pad<br>(JSON Data-Driven Layouts)"]
+            ActionRibbon["Action Ribbon<br>(Fixed + Dynamic Context + Macros)"]
+            Sniffer["Context Sniffer<br>(Screen Buffer Regex from Profile)"]
+            KeymapEditor["Inline Keymap Editor<br>(LocalStorage Key Binding)"]
         end
     end
 
-    subgraph Transport_Layer["Transport Layer (Python server.py)"]
-        HTTP_Server["HTTP Static Server<br>(Serves HTML, CSS, JS, Vendor Assets)"]
+    subgraph Profile_Layer["Declarative Profile Layer (profiles/*.json)"]
+        ProfileDoc["Game Profile (JSON Schema)<br>(executable, args, env, cwd, redraw_key, context_rules)"]
+        ProfileTome["profiles/tome238.json<br>(Official ToME 2.3.8-ah)"]
+        ProfileDemo["profiles/portability_demo.json<br>(Decoupled Shell Demo)"]
+        ProfileTomenet["profiles/tomenet.json<br>(Future Multi-Process C/S)"]
+        ProfileDoc -.-> ProfileTome
+        ProfileDoc -.-> ProfileDemo
+        ProfileDoc -.-> ProfileTomenet
+    end
+
+    subgraph Shell_Host["Generic Mobile Terminal Shell (web/server.py)"]
+        HTTP_Server["HTTP Static Server & REST API<br>(GET / & GET /api/profile)"]
         WS_Server["WebSocket Server (/ws?session=id)<br>(Bidirectional JSON / Raw Binary Stream)"]
-        SessionMgr["PtySession Manager<br>(Lifecycle, Resize, Process Supervision)"]
+        SessionMgr["PtySession Supervisor<br>(Lifecycle, Resize, Process Tracking)"]
         RingBuffer["64KB Circular Ring Buffer<br>(Preserves Last 65,536 Bytes of VT100 Output)"]
         PTY_Master["Linux PTY Master FD<br>(O_NONBLOCK, Asyncio add_reader)"]
     end
 
-    subgraph OS_Kernel["Linux / Termux Kernel"]
-        PTY_Device["PTY Slave Device (/dev/pts/X)<br>(termios TIOCSWINSZ 80x24)"]
+    subgraph Kernel_Transport["Kernel & Local Transport"]
+        PTY_Slave["PTY Slave Device (/dev/pts/X)<br>(termios TIOCSWINSZ 80x24)"]
+        LoopbackTCP["Android Loopback TCP (127.0.0.1)<br>(Latency < 0.2ms, Non-Root)"]
     end
 
-    subgraph Game_Engine["Core Game Engine (Native ARM64 ELF)"]
-        GCU_Driver["Ncurses GCU Driver<br>(main-gcu.c + libncursesw.so.6.5)"]
-        Core_C["ToME 2.3.8-ah C Engine<br>(Dungeon, Combat, Spells, Saves)"]
-        Lua_Engine["Embedded Lua 4.0.1 Engine<br>(game/src/lua/ + tolua Bindings)"]
-        Asset_DB["Game Assets & Databases<br>(game/lib/edit/, game/lib/scpt/, saves/)"]
+    subgraph Target_Process["Target Executable Layer (Managed Processes)"]
+        subgraph Single_Proc["Single-Process Mode (e.g. ToME 2.3.8-ah)"]
+            GCU_Driver["Ncurses GCU Driver<br>(main-gcu.c + libncursesw.so.6.5)"]
+            Core_C["ToME C Core Engine<br>(Dungeon, Combat, Spells, Saves)"]
+            Lua_Engine["Embedded Lua 4.0.1 Engine<br>(game/src/lua/ + tolua Bindings)"]
+            GCU_Driver <--> Core_C
+            Core_C <--> Lua_Engine
+        end
+
+        subgraph Multi_Proc["Multi-Process Mode (e.g. TomeNET C/S)"]
+            Client_Bin["TomeNET Client (tomenet -c)<br>[PTY Foreground Child]"]
+            Server_Bin["TomeNET Server (tomenet.server)<br>[Supervised Companion Daemon]"]
+            Client_Bin <-->|Local TCP Port 18348| LoopbackTCP
+            LoopbackTCP <--> Server_Bin
+        end
     end
 
     %% Client Interactions
     Browser --> Xterm
-    DPad --> Modifiers
-    ActionRibbon --> Modifiers
-    Modifiers --> WS_Server
+    AdvKeyboard --> WS_Server
+    ActionRibbon --> WS_Server
+    KeymapEditor --> AdvKeyboard
     Sniffer -.->|Scans Terminal Stream| ActionRibbon
-    GhostToggle -.->|Toggles CSS Opacity| Touch_UI
 
-    %% Client <-> Transport
+    %% Client <-> Shell
     Xterm <-->|Bidirectional WebSocket Stream| WS_Server
-    Browser <-->|HTTP GET| HTTP_Server
+    Browser <-->|HTTP GET & /api/profile| HTTP_Server
 
-    %% Transport Internal
+    %% Shell Internal & Profile Binding
+    ProfileLayer -.->|Loaded on Startup (--profile)| SessionMgr
+    SessionMgr --> HTTP_Server
     WS_Server <--> SessionMgr
     SessionMgr --> PTY_Master
     PTY_Master --> RingBuffer
-    RingBuffer -.->|Replay on Reconnect + Ctrl+R| WS_Server
+    RingBuffer -.->|Replay on Reconnect + redraw_key| WS_Server
 
-    %% Transport <-> Kernel <-> Game
-    PTY_Master <--> PTY_Device
-    PTY_Device <--> GCU_Driver
-    GCU_Driver <--> Core_C
-    Core_C <--> Lua_Engine
-    Core_C <--> Asset_DB
+    %% Shell <-> Kernel & Executables
+    PTY_Master <--> PTY_Slave
+    PTY_Slave <--> GCU_Driver
+    PTY_Slave <--> Client_Bin
+    SessionMgr -.->|Daemon Lifecycle Supervision| Server_Bin
 ```
 
 ---
@@ -194,8 +214,77 @@ This guarantees that whether viewed on a compact 5.8-inch smartphone in portrait
 
 ---
 
-## 5. Architectural Cross-References
+## 5. Declarative Profile Architecture & Seam Specification
 
+The mobile terminal shell ([`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py) and [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js)) is an engine-agnostic PTY streaming platform. The seam between the generic shell and specific game engines is managed entirely by declarative JSON profiles located in [`profiles/`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/).
+
+### 5.1 Profile Schema & Configuration
+A profile defines execution environment, metadata, and input adaptations:
+```json
+{
+  "id": "tome238",
+  "name": "Tales of Middle-earth 2.3.8-ah",
+  "title": "ToME 2.3.8-ah Mobile Terminal",
+  "brand": { "logo": "⚡ ToME", "version": "2.3.8-ah" },
+  "executable": "game/tome",
+  "args": ["-mgcu", "-MToME"],
+  "cwd": "game",
+  "env": { "TERM": "xterm-256color", "TOME_PATH": "lib", "LANG": "en_US.UTF-8" },
+  "geometry": { "cols": 80, "rows": 24 },
+  "redraw_key": "\u0012",
+  "keyboard_config": "keyboards.json",
+  "context_rules": [
+    { "type": "yes_no", "pattern": "\\((y\\/n|y\\/n\\/esc|\\[y\\/n\\])\\)" }
+  ]
+}
+```
+
+- **Dynamic Injection**: `web/server.py` serves the active profile via the `GET /api/profile` REST endpoint. Upon loading, `web/app.js` fetches this metadata, dynamically updating the browser tab title, navbar branding, keyboard definitions, and regex sniffer rules.
+- **Portability Proof**: Verified with [`scripts/portability_demo.c`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/portability_demo.c) and [`profiles/portability_demo.json`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/portability_demo.json) via [`scripts/test_portability.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_portability.py), proving that non-ToME terminal applications run flawlessly without editing a single line of web or server code.
+
+---
+
+## 6. Decoupling Audit Checkpoint
+
+Full audit results are documented in [`docs/decoupling_checkpoint.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/decoupling_checkpoint.md). The codebase was evaluated against a 4-way classification matrix:
+
+| Classification | Meaning | Examples in Codebase | Action Taken |
+| :--- | :--- | :--- | :--- |
+| **`GENERIC`** | Game-agnostic terminal infrastructure | PTY master/slave allocation, xterm.js auto-fit math, WebSocket event loop | Retained as common host core. |
+| **`CONFIG`** | Hardcoded values needing declarative externalization | Game paths, command line args, env vars, UI titles, ribbon buttons | Extracted into `profiles/*.json`. |
+| **`ADAPTER`** | Game-specific behaviors requiring strategy wrappers | Redraw keystroke (`Ctrl+R` vs `Ctrl+L`), Run movement syntax (`.` vs `Shift`), Sniffer regex | Parameterized in profiles & handlers. |
+| **`LEAVE ALONE`** | Coupling points where abstraction cost exceeds benefits | 80x24 standard geometry, Latin-1 fallback parsing | Preserved as practical roguelike conventions. |
+
+---
+
+## 7. Local Multi-Process Architecture & Feasibility
+
+TomeNET (and similar C/S roguelikes) requires both a server daemon and an interactive client. Feasibility analysis on Android Termux ARM64 is detailed in [`docs/multiprocess_feasibility.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/multiprocess_feasibility.md):
+
+### 7.1 Verified Feasibility Metrics
+- **Build Compatibility**: Compiles cleanly with Termux Clang, `libncursesw`, `libcrypt`, and `libm`.
+- **Loopback Socket Latency**: Android kernel `127.0.0.1` loopback latency is `< 0.2ms` with zero non-root permission hurdles.
+- **Resource Footprint**: Server + Client combined RSS memory is `< 50MB`, and idle CPU is `< 2%` on typical modern mobile ARM64 SoCs.
+
+### 7.2 Process Supervision Model
+```
+┌──────────────────────────────────────────────────────────┐
+│ Python Transport Shell (server.py)                       │
+│  ├─ Supervised Companion Daemon: tomenet.server (127.0.0.1)│
+│  └─ Foreground Child PTY:        tomenet -c (GCU Client) │
+│      └─ Bidirectional Stream <───> WebSocket (/ws)       │
+└──────────────────────────────────────────────────────────┘
+```
+- **Concealment**: The web client only interacts with the client PTY stream; the background server process is completely transparent to the user.
+- **Metaserver Isolation**: `REPORT_TO_METASERVER = false` is enforced in `tomenet.cfg` to prevent advertising single-player local games to the public Internet.
+- **Cascading Teardown**: Upon session termination or 300-second idle disconnect, `server.py` guarantees clean shutdown of both processes (`SIGTERM` -> 200ms grace -> `SIGKILL`).
+
+---
+
+## 8. Architectural Cross-References
+
+- **Decoupling Audit & Checkpoint**: [`docs/decoupling_checkpoint.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/decoupling_checkpoint.md)
+- **Local Multi-Process (TomeNET) Feasibility Study**: [`docs/multiprocess_feasibility.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/multiprocess_feasibility.md)
 - **Mobile Keyboard Detailed Specification**: [`docs/mobile_keyboard_spec.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/mobile_keyboard_spec.md)
 - **TomeNET Runecraft Archeology & Bitmask Mechanics**: [`docs/tomenet_runecraft_spec.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/tomenet_runecraft_spec.md)
 - **Semantic Mapping of Runecraft into ToME 2.3.8-ah**: [`docs/runecraft_mapping.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_mapping.md)
@@ -203,4 +292,5 @@ This guarantees that whether viewed on a compact 5.8-inch smartphone in portrait
 - **Gameplay Changes & Adventurer Class Specification**: [`docs/gameplay_changes.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/gameplay_changes.md)
 - **Native Termux Build Guide**: [`docs/build_guide.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/build_guide.md)
 - **Operational Guidelines for AI Agents**: [`AGENTS.md`](file:///data/data/com.termux/files/home/tome238-mobile/AGENTS.md)
+
 

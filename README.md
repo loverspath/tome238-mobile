@@ -44,7 +44,10 @@ python3 ./scripts/test_web.py
 ## Documentation
 - [AGENTS.md](file:///data/data/com.termux/files/home/tome238-mobile/AGENTS.md): Operational guide, directory layout, reference repos, and legacy refactoring taboos.
 - [docs/architecture.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/architecture.md): Full system architecture, Mermaid diagrams, PTY-WebSocket bridge, and 64KB ring buffer.
+- [docs/decoupling_checkpoint.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/decoupling_checkpoint.md): Decoupling audit, coupling catalog, and generic shell architecture checkpoint.
+- [docs/multiprocess_feasibility.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/multiprocess_feasibility.md): Local multiprocess (TomeNET Server + Client) feasibility study on Termux ARM64.
 - [docs/gameplay_changes.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/gameplay_changes.md): Fork comparison tracker, Adventurer class spec, and Runecraft integration roadmap.
+
 - [docs/runecraft_mapping.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_mapping.md): 1:1 semantic mapping of TomeNET Runecraft to ToME 2.3.8-ah primitives.
 - [docs/runecraft_vertical_slice_spec.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_vertical_slice_spec.md): Fire/Cold × Bolt/Ball Zero-C prototype Lua specification.
 - [docs/tomenet_runecraft_spec.md](file:///data/data/com.termux/files/home/tome238-mobile/docs/tomenet_runecraft_spec.md): TomeNET Runecraft rules, formulas, and bitmask specification.

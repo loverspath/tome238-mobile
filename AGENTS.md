@@ -33,14 +33,20 @@ tome238-mobile/
 ├── run_web                 # Convenience shim -> scripts/run_web.sh
 ├── restart                 # Daemon manager & restart script
 ├── test                    # Convenience test runner -> scripts/test.sh + scripts/test_web.py
+├── profiles/               # Declarative game and application profiles (JSON)
+│   ├── tome238.json        # Official ToME 2.3.8-ah profile
+│   └── portability_demo.json # Standalone C portability proof profile
 ├── docs/                   # Architectural, design, and gameplay specifications
 │   ├── architecture.md     # Full system architecture (PTY bridge, ring buffer, Web UI)
+│   ├── decoupling_checkpoint.md # Decoupling audit & generic shell architecture checkpoint
+│   ├── multiprocess_feasibility.md # Local multiprocess (TomeNET server+client) feasibility analysis
 │   ├── gameplay_changes.md # Fork modifications, Adventurer class spec, Runecraft roadmap
 │   ├── build_guide.md      # Toolchain details, flags, and library dependencies
 │   ├── mobile_keyboard_spec.md # Angbandroid UX analysis & virtual keyboard spec
 │   ├── tomenet_runecraft_spec.md # TomeNET Runecraft mechanics & formulas archaeology
 │   ├── runecraft_mapping.md # 1:1 semantic mapping of Runecraft into ToME 2.3.8-ah primitives
 │   └── runecraft_vertical_slice_spec.md # Fire/Cold × Bolt/Ball Zero-C prototype Lua spec
+
 
 ├── game/                   # ToME 2.3.8-ah core engine
 │   ├── src/                # C source files, makefiles, and Lua 4.0 engine
@@ -115,12 +121,44 @@ External reference repositories are cloned at `/data/data/com.termux/files/home/
 
 ---
 
-## 5. Critical Legacy Areas: What NOT to Refactor (Taboos & Pitfalls)
+## 5. Architectural Decoupling: Generic Mobile Terminal Shell vs Game Engine
+
+The project strictly follows a **two-tier decoupled architecture**:
+
+1. **Generic Mobile Terminal Shell** ([`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py), [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), [`web/index.html`](file:///data/data/com.termux/files/home/tome238-mobile/web/index.html), [`web/keyboards.json`](file:///data/data/com.termux/files/home/tome238-mobile/web/keyboards.json)):
+   - A completely game-agnostic PTY host, WebSocket streaming broker, and responsive touch keyboard client.
+   - Operates with zero hardcoded game logic, paths, or macros.
+   - Tested and verified via [`scripts/test_portability.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_portability.py) with a standalone C demo ([`scripts/portability_demo.c`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/portability_demo.c)).
+2. **Declarative Game Profiles** ([`profiles/`](file:///data/data/com.termux/files/home/tome238-mobile/profiles/)):
+   - Defines game-specific parameters in declarative JSON schema:
+     - `id`, `name`, `title`, `brand`: Branding and browser window title.
+     - `executable`, `args`, `cwd`, `env`: Process spawn command, working directory, and environment variables.
+     - `geometry`: Terminal dimensions (`cols`, `rows`, default 80x24).
+     - `redraw_key`: Screen refresh keystroke (`\x12` for ToME, `\x0c` for standard curses/sh).
+     - `keyboard_config`: Target virtual keyboard layout definition (`keyboards.json`).
+     - `context_rules`: Regex sniffer rules for dynamic prompt button injection.
+   - Loaded via CLI: `python3 web/server.py --profile profiles/tome238.json`.
+   - Exposed to frontend dynamically via `GET /api/profile`.
+
+### Multi-Process Game Preparation (TomeNET Server + Client Local Hosting)
+As investigated and verified in [`docs/multiprocess_feasibility.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/multiprocess_feasibility.md):
+- **Local Loopback Transport**: Termux ARM64 allows non-root binding and connection over `127.0.0.1` (<0.2ms latency).
+- **Process Orchestration Model**:
+  - The PTY host (`server.py`) attaches directly to the interactive client process (`tomenet -c -f client.cfg 127.0.0.1 ...`).
+  - The local server process (`tomenet.server`) is spawned as a background companion daemon.
+  - **Metaserver Isolation**: Must configure `REPORT_TO_METASERVER = false` in `tomenet.cfg` to prevent public broadcast of private local mobile runs.
+  - **Cascade Lifecycle**: When the client session disconnects or expires, `server.py` cleans up both the client PTY and the background server daemon via `SIGTERM` followed by `SIGKILL`.
+- **Full Audit Reference**: See [`docs/decoupling_checkpoint.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/decoupling_checkpoint.md) for the 20-point coupling audit matrix (`GENERIC`, `CONFIG`, `ADAPTER`, `LEAVE ALONE`).
+
+---
+
+## 6. Critical Legacy Areas: What NOT to Refactor (Taboos & Pitfalls)
 
 To preserve engine stability, incoming agents must strictly obey the following constraints:
 
 > [!CAUTION]
 > **DO NOT refactor these core legacy systems.** Doing so has historically led to broken builds, memory corruption, and unrecoverable savefile loss in Angband/ToME variants.
+
 
 ### 1. Old C Macros and Bitmasks (`defines.h`, `types.h`, `angband.h`)
 - Do NOT convert `#define` macros into C++ style enums or inline functions.
@@ -146,7 +184,7 @@ To preserve engine stability, incoming agents must strictly obey the following c
 
 ---
 
-## 6. Development & Iteration Workflow
+## 7. Development & Iteration Workflow
 
 When implementing new features or making adjustments:
 
