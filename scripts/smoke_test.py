@@ -53,14 +53,16 @@ def run_test(args, inputs=None, timeout=3.0):
             except OSError:
                 break
         
+    # Check child process status
+    try:
         pid_res, status = os.waitpid(pid, os.WNOHANG)
         if pid_res != 0:
             os.close(master)
             return os.waitstatus_to_exitcode(status), bytes(output)
-            
-    try:
-        os.kill(pid, 9)
-        os.waitpid(pid, 0)
+        else:
+            # Still running after timeout, kill it
+            os.kill(pid, 9)
+            os.waitpid(pid, 0)
     except OSError:
         pass
     os.close(master)

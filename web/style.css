@@ -1,0 +1,382 @@
+/* ToME 2.3.8-ah Mobile Web Terminal Stylesheet */
+
+:root {
+  --bg-primary: #0e0e12;
+  --bg-secondary: #181820;
+  --bg-tertiary: #242430;
+  --accent-gold: #e69a28;
+  --accent-blue: #3b82f6;
+  --accent-red: #ef4444;
+  --accent-green: #10b981;
+  --fg-main: #f3f4f6;
+  --fg-dim: #9ca3af;
+  --btn-cardinal: #282c3c;
+  --btn-diag: #1e2230;
+  --btn-action: #232734;
+  --border-color: #2e3446;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--fg-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* --- Top Header Bar --- */
+#top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 38px;
+  min-height: 38px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 10px;
+  font-size: 13px;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand .logo {
+  font-weight: 800;
+  color: var(--accent-gold);
+  letter-spacing: 0.5px;
+}
+
+.brand .version {
+  font-size: 10px;
+  background: var(--bg-tertiary);
+  color: var(--fg-dim);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.status-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.status-indicator.connected {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: var(--accent-green);
+}
+
+.status-indicator.disconnected {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: var(--accent-red);
+}
+
+.icon-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--fg-main);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.icon-btn:active {
+  background: var(--accent-gold);
+  color: #000;
+}
+
+/* --- Terminal Viewport --- */
+#terminal-wrapper {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  background-color: #000000;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#terminal {
+  width: 100%;
+  height: 100%;
+}
+
+.xterm {
+  padding: 4px;
+  height: 100%;
+}
+
+.xterm-viewport {
+  background-color: #000000 !important;
+}
+
+/* --- Button Ribbon Bar --- */
+#ribbon-bar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  min-height: 44px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 4px 6px;
+  gap: 6px;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.ribbon-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ribbon-section.scrollable {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.ribbon-section.scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+.ribbon-divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border-color);
+  margin: 0 2px;
+}
+
+.ribbon-btn {
+  height: 34px;
+  padding: 0 10px;
+  background-color: var(--btn-action);
+  border: 1px solid var(--border-color);
+  color: var(--fg-main);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ribbon-btn:active, .ribbon-btn.active {
+  background-color: var(--accent-gold);
+  color: #000;
+  transform: scale(0.96);
+}
+
+.ribbon-btn.esc-btn {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.ribbon-btn.enter-btn {
+  background-color: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #86efac;
+}
+
+.ribbon-btn.macro-btn {
+  background-color: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+}
+
+/* --- Virtual Input Controller (Bottom Panel) --- */
+#keyboard-panel {
+  display: flex;
+  height: 215px;
+  min-height: 215px;
+  background-color: var(--bg-secondary);
+  padding: 6px;
+  gap: 8px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+#keyboard-panel.ghost {
+  opacity: 0.35;
+}
+
+#keyboard-panel.hidden-panel {
+  display: none;
+}
+
+/* Left Actions Grid */
+.action-grid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.grid-row {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.action-btn {
+  flex: 1;
+  background-color: var(--btn-action);
+  border: 1px solid var(--border-color);
+  color: var(--fg-main);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:active, .action-btn.active {
+  background-color: var(--accent-gold);
+  color: #000;
+  transform: scale(0.96);
+}
+
+.action-btn.mod-btn.active {
+  background-color: var(--accent-gold);
+  color: #000;
+}
+
+.action-btn.run-btn.active {
+  background-color: var(--accent-red);
+  color: #fff;
+  border-color: #f87171;
+}
+
+/* Right 3x3 D-Pad */
+.dpad-grid {
+  width: 175px;
+  min-width: 175px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.dpad-btn {
+  position: relative;
+  background-color: var(--btn-cardinal);
+  border: 1px solid var(--border-color);
+  color: var(--fg-main);
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+
+.dpad-btn .num {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--fg-dim);
+}
+
+.dpad-btn.diag {
+  background-color: var(--btn-diag);
+}
+
+.dpad-btn.center {
+  background-color: var(--bg-tertiary);
+  color: var(--accent-gold);
+}
+
+.dpad-btn:active, .dpad-btn.active {
+  background-color: var(--accent-gold);
+  color: #000;
+  transform: scale(0.95);
+  box-shadow: none;
+}
+
+.dpad-btn:active .num, .dpad-btn.active .num {
+  color: #333;
+}
+
+/* --- Landscape Layout Adjustments --- */
+@media (orientation: landscape) and (max-height: 500px) {
+  #top-bar {
+    height: 30px;
+    min-height: 30px;
+  }
+  #ribbon-bar {
+    height: 36px;
+    min-height: 36px;
+  }
+  #keyboard-panel {
+    height: 145px;
+    min-height: 145px;
+    padding: 3px;
+    gap: 6px;
+  }
+  .dpad-grid {
+    width: 160px;
+    min-width: 160px;
+  }
+  .dpad-btn {
+    font-size: 14px;
+  }
+  .action-btn {
+    font-size: 11px;
+  }
+}

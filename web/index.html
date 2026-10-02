@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ToME 2.3.8-ah Mobile Terminal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#121214">
+
+  <!-- Offline Xterm.js bundle -->
+  <link rel="stylesheet" href="vendor/xterm.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/xterm.js"></script>
+  <script src="vendor/xterm-addon-fit.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Top Bar -->
+    <header id="top-bar">
+      <div class="brand">
+        <span class="logo">⚡ ToME</span>
+        <span class="version">2.3.8-ah</span>
+      </div>
+      <div class="status-group">
+        <span id="conn-status" class="status-indicator disconnected">Connecting...</span>
+        <button id="btn-ghost" class="icon-btn" title="Toggle Keyboard Opacity">◧</button>
+        <button id="btn-restart" class="icon-btn" title="Restart Game">↺</button>
+      </div>
+    </header>
+
+    <!-- Terminal View -->
+    <main id="terminal-wrapper">
+      <div id="terminal"></div>
+    </main>
+
+    <!-- Context Ribbon -->
+    <nav id="ribbon-bar">
+      <div class="ribbon-section fixed-left">
+        <button class="ribbon-btn esc-btn" data-key="\e">⎋ Esc</button>
+        <button class="ribbon-btn enter-btn" data-key="\n">⏎ Ret</button>
+        <button class="ribbon-btn" data-key=" ">⎵ Space</button>
+        <button class="ribbon-btn" data-key="\t">⇥ Tab</button>
+        <button class="ribbon-btn" data-key="\b">⌫ BS</button>
+      </div>
+      <div class="ribbon-divider"></div>
+      <div class="ribbon-section scrollable" id="dynamic-ribbon">
+        <button class="ribbon-btn macro-btn" data-key="R&\n">💤 Rest</button>
+        <button class="ribbon-btn" data-key="i">🎒 Inven</button>
+        <button class="ribbon-btn" data-key="m">✨ Magic</button>
+        <button class="ribbon-btn" data-key="d">🗑 Drop</button>
+        <button class="ribbon-btn" data-key="l">👁 Look</button>
+        <button class="ribbon-btn" data-key="*">🎯 Target</button>
+        <button class="ribbon-btn" data-key="f">🏹 Fire</button>
+        <button class="ribbon-btn" data-key="g">✋ Pickup</button>
+        <button class="ribbon-btn" data-key="w">⚔ Wield</button>
+        <button class="ribbon-btn" data-key="q">🧪 Quaff</button>
+        <button class="ribbon-btn" data-key="r">📜 Read</button>
+        <button class="ribbon-btn" data-key="u">🪄 Use</button>
+        <button class="ribbon-btn" data-key="M">🗺 Map</button>
+      </div>
+    </nav>
+
+    <!-- Virtual Input Controller -->
+    <section id="keyboard-panel">
+      <!-- Left: Commands & Modifiers -->
+      <div class="action-grid">
+        <div class="grid-row">
+          <button id="btn-shift" class="action-btn mod-btn" data-mod="shift">⇧ Shift</button>
+          <button id="btn-ctrl" class="action-btn mod-btn" data-mod="ctrl">^ Ctrl</button>
+          <button id="btn-run" class="action-btn mod-btn run-btn" data-mod="run">⚡ RUN</button>
+        </div>
+        <div class="grid-row">
+          <button class="action-btn" data-key=".">· Wait</button>
+          <button class="action-btn" data-key=",">, Stay</button>
+          <button class="action-btn" data-key="?">? Help</button>
+        </div>
+        <div class="grid-row">
+          <button class="action-btn" data-key="<">&lt; Up</button>
+          <button class="action-btn" data-key=">">&gt; Down</button>
+          <button class="action-btn" data-key="0">0 Rpt</button>
+        </div>
+        <div class="grid-row">
+          <button class="action-btn" data-key="c">c Close</button>
+          <button class="action-btn" data-key="o">o Open</button>
+          <button class="action-btn" data-key="B">B Bash</button>
+        </div>
+      </div>
+
+      <!-- Right: 3x3 Directional Pad -->
+      <div class="dpad-grid">
+        <button class="dpad-btn diag" data-dir="7">↖<span class="num">7</span></button>
+        <button class="dpad-btn cardinal" data-dir="8">↑<span class="num">8</span></button>
+        <button class="dpad-btn diag" data-dir="9">↗<span class="num">9</span></button>
+
+        <button class="dpad-btn cardinal" data-dir="4">←<span class="num">4</span></button>
+        <button class="dpad-btn center" data-dir="5">·<span class="num">5</span></button>
+        <button class="dpad-btn cardinal" data-dir="6">→<span class="num">6</span></button>
+
+        <button class="dpad-btn diag" data-dir="1">↙<span class="num">1</span></button>
+        <button class="dpad-btn cardinal" data-dir="2">↓<span class="num">2</span></button>
+        <button class="dpad-btn diag" data-dir="3">↘<span class="num">3</span></button>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

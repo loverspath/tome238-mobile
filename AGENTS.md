@@ -16,20 +16,40 @@ tome238-mobile/
 │   ├── src/       # ToME 2.3.8-ah native C source, Makefile, Lua 4.0 engine
 │   ├── lib/       # Runtime game assets (modules, scpt, edit, pref, etc.)
 │   └── tome       # Native ARM64 ELF executable
-├── web/           # Mobile web frontend (Xterm.js / canvas + virtual keyboard)
-├── scripts/       # Operational scripts (build.sh, run.sh, test.sh, smoke_test.py)
+├── web/
+│   ├── index.html # Mobile web app markup
+│   ├── style.css  # Mobile touch layout and theme
+│   ├── app.js     # WebSocket client, Xterm.js controller & touch input mapper
+│   ├── server.py  # Python async PTY <-> WebSocket server
+│   └── vendor/    # Local offline xterm.js bundles
+├── scripts/
+│   ├── build.sh       # Native C engine compiler
+│   ├── run.sh         # Termux CLI launcher
+│   ├── run_web.sh     # Web server launcher
+│   ├── test.sh        # Headless PTY smoke test
+│   ├── smoke_test.py  # PTY test script
+│   └── test_web.py    # Automated Web/WebSocket integration test
 ├── saves/         # Player savefiles directory (symlinked from game/lib/save)
 ├── docs/          # Technical specifications and guides
 ├── AGENTS.md      # Agent handover instructions
 └── README.md      # Project overview and quickstart
 ```
 
-## 3. Current Project State (Phase 1 Baseline)
-- **Status**: Phase 1 (Native Build & Smoke Test) complete.
-- **Artifacts**:
-  - `game/src/Makefile`: Clang/ncursesw build configuration targeting Termux native environment.
-  - `game/tome`: Successfully compiled ELF 64-bit executable.
-  - `scripts/test.sh` / `scripts/smoke_test.py`: PTY-based headless verification passing with exit code 0.
+## 3. Current Project State
+- **Phase 1 (Native Build & Smoke Test)**: COMPLETE.
+  - Upstream Curses (`main-gcu.c`) on `libncursesw.so.6.5`.
+  - Android JNI layers cleanly isolated and excluded from build.
+- **Phase 2 (Terminal Transport Daemon)**: COMPLETE.
+  - `web/server.py` handles HTTP static serving and bidirectional WebSocket streaming (`/ws`).
+  - Native Linux PTY integration with `fcntl`, non-blocking I/O, and `TIOCSWINSZ` 80x24 window sizing.
+  - Multi-session support, reconnection preservation buffer, and graceful child process cleanup.
+- **Phase 3 (Mobile Web Client & Virtual Keyboard)**: COMPLETE.
+  - Fully offline `xterm.js` terminal display.
+  - Angbandroid-inspired 3x3 D-Pad with long-press continuous auto-repeat (300ms delay, 75ms repeat).
+  - Quick action button ribbon (`Esc`, `Enter`, `Space`, `Tab`, `Rest`, `Inven`, `Magic`, `Look`, `Target`, `Fire`, `Pickup`, `Wield`, `Quaff`, `Read`, `Use`, `Map`).
+  - Real-time Context Sniffer dynamically injecting `(y/n)` buttons.
+  - Modifiers: `Shift`, `Ctrl`, and `RUN` (`.` + direction).
+  - `Ghost` opacity toggle for flexible screen space management.
 - **Upcoming Work**:
-  - Phase 2: Design and implementation of the thin transport daemon (pty/websocket bridge).
-  - Phase 3: Web frontend and touch keyboard layout adapted for mobile screen.
+  - Phase 4: Extended spellcasting/macros and user customization.
+  - Phase 6: TomeNET Runecraft wheel integration if planned.
