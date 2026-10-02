@@ -9,6 +9,9 @@ if [ ! -f "$PROJECT_ROOT/game/tome" ]; then
     echo "Binary not found. Running build..."
     "$PROJECT_ROOT/scripts/build.sh"
 fi
+mkdir -p "$PROJECT_ROOT/saves/user"
+touch "$PROJECT_ROOT/saves/scores.raw"
+touch "$PROJECT_ROOT/saves/user/automat.atm"
 
 cd "$PROJECT_ROOT/game"
 exec ./tome "$@"

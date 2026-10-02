@@ -887,12 +887,12 @@
   function adjustTerminalScale() {
     if (!state.term) return;
 
-    const cw = elTerminalWrapper.clientWidth - 2;
-    const ch = elTerminalWrapper.clientHeight - 2;
+    const cw = Math.max(0, elTerminalWrapper.clientWidth - 12);
+    const ch = Math.max(0, elTerminalWrapper.clientHeight - 4);
     if (cw <= 0 || ch <= 0) return;
 
     const isPortrait = window.innerHeight > window.innerWidth;
-    const charAspect = 0.58;
+    const charAspect = 0.61;
     const lineHeight = 1.15;
     const targetCols = state.profileMeta?.geometry?.cols || 80;
     const targetRows = state.profileMeta?.geometry?.rows || 24;

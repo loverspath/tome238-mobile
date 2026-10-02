@@ -12,6 +12,9 @@ tome
 # Saves & Temporary files
 saves/*
 !saves/.gitkeep
+!saves/user/
+saves/user/*
+!saves/user/.gitkeep
 *.bak
 *~
 .DS_Store
@@ -21,4 +24,3 @@ __pycache__/
 server.log
 game/lib/note/*.nte
 ref_repos
-game/lib/user/*.prf

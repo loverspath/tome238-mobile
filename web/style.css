@@ -231,6 +231,8 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 0 4px;
+  box-sizing: border-box;
 }
 
 /* Docked Mode */

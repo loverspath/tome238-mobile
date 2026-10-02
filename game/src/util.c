@@ -746,8 +746,14 @@ return (fdes);
 
 #else /* MACH_O_CARBON */
 
-/* Create the file, fail if exists, write-only, binary */
-return (open(buf, O_CREAT | O_EXCL | O_WRONLY | O_BINARY, mode));
+	/* Create the file, fail if exists, write-only, binary */
+	int fd = open(buf, O_CREAT | O_EXCL | O_WRONLY | O_BINARY, mode);
+	if (fd < 0 && errno == EEXIST)
+	{
+		/* Fallback for symlinks whose target does not exist yet */
+		fd = open(buf, O_CREAT | O_WRONLY | O_BINARY, mode);
+	}
+	return (fd);
 
 #endif /* MACH_O_CARBON */
 

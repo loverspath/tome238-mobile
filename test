@@ -21,8 +21,11 @@ python3 "$DIR/scripts/test_portability.py"
 echo -e "\n[5/6] Running Crash Detection & Error Pipeline Test..."
 python3 "$DIR/scripts/test_crash_pipeline.py"
 
-echo -e "\n[6/6] Running In-Game Ctrl+S Save & Flow Control Regression Test..."
+echo -e "\n[6/7] Running In-Game Ctrl+S Save & Flow Control Regression Test..."
 python3 "$DIR/scripts/test_ctrl_s.py"
+
+echo -e "\n[7/7] Running PRF (Macro/Options) & Hall of Fame Persistence Test..."
+python3 "$DIR/scripts/test_persistence.py"
 
 echo -e "\n=========================================="
 echo " ALL TESTS PASSED!"

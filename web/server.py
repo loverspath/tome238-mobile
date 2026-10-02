@@ -677,6 +677,17 @@ async def main():
     parser.add_argument("--profile", default=DEFAULT_PROFILE_PATH, help=f"Path to profile json (default: {DEFAULT_PROFILE_PATH})")
     args = parser.parse_args()
 
+    # Ensure persistent directories and files exist
+    saves_dir = os.path.join(PROJECT_ROOT, "saves")
+    saves_user_dir = os.path.join(saves_dir, "user")
+    os.makedirs(saves_user_dir, exist_ok=True)
+    scores_file = os.path.join(saves_dir, "scores.raw")
+    if not os.path.exists(scores_file):
+        open(scores_file, "a").close()
+    atm_file = os.path.join(saves_user_dir, "automat.atm")
+    if not os.path.exists(atm_file):
+        open(atm_file, "a").close()
+
     # Index available profiles
     index_profiles()
 
