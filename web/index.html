@@ -62,6 +62,9 @@
       </div>
     </div>
 
+    <!-- Floating Action Buttons Layer (Draggable Neon Cyan Floating Macros & F-Keys) -->
+    <div id="floating-buttons-layer" class="floating-buttons-layer"></div>
+
     <!-- Context Ribbon -->
     <nav id="ribbon-bar">
       <div class="ribbon-section fixed-left">
@@ -105,6 +108,7 @@
           <button type="button" class="qs-item-btn" data-action="add-floating">Add Floating Button</button>
           <button type="button" class="qs-item-btn" data-action="toggle-dock">Keyboard Position (Dock/Overlap)</button>
           <button type="button" class="qs-item-btn" data-action="toggle-ribbon">Show Button Ribbon</button>
+          <button type="button" class="qs-item-btn" data-action="reset-ribbon">Reset Ribbon Buttons</button>
           <button type="button" class="qs-item-btn" data-action="reset-dpad">Reset D-Pad Position</button>
           <button type="button" class="qs-item-btn" data-action="open-preferences">Preferences</button>
           <button type="button" class="qs-item-btn" data-action="open-profiles">Profiles</button>
@@ -176,34 +180,81 @@
       </div>
     </div>
 
-    <!-- OptionPopup (Inline Keymap Customization Dialog) -->
+    <!-- Universal Button / Macro Editor Modal Dialog -->
     <div id="keymap-modal" class="modal-overlay hidden-modal">
-      <div class="modal-dialog">
+      <div class="modal-dialog editor-dialog">
         <div class="modal-header">
-          <span class="modal-title">⚙ Keymap Editor</span>
+          <span class="modal-title" id="editor-modal-title">⚙ Button &amp; Macro Editor</span>
           <span id="keymap-trigger-badge" class="trigger-badge">Key: A</span>
         </div>
-        <div class="modal-body">
-          <label class="modal-label">Bound Action / Macro Sequence:</label>
-          <input type="text" id="keymap-action-input" class="modal-input" placeholder="e.g. R&\n, m0a, \e, f*t..." autocomplete="off" autocapitalize="none">
-
-          <!-- Quick Insert Bar -->
-          <div class="quick-insert-bar">
-            <button type="button" class="quick-insert-btn" data-insert="\e">⎋ \e (Esc)</button>
-            <button type="button" class="quick-insert-btn" data-insert="\s">␣ \s (Space)</button>
-            <button type="button" class="quick-insert-btn" data-insert="\t">⇥ \t (Tab)</button>
-            <button type="button" class="quick-insert-btn" data-insert="\n">⏎ \n (Enter)</button>
+        <div class="modal-body editor-scroll-body">
+          <!-- Button Label Group (shown for floating buttons and ribbon buttons) -->
+          <div id="editor-label-group" class="editor-input-group">
+            <label class="modal-label" for="keymap-label-input">Button Label:</label>
+            <input type="text" id="keymap-label-input" class="modal-input" placeholder="e.g. F1, Heal, Zap, Inven" autocomplete="off" autocapitalize="none">
           </div>
 
-          <label class="modal-checkbox-row">
+          <!-- Action / Macro Sequence Input -->
+          <div class="editor-input-group">
+            <label class="modal-label" for="keymap-action-input">Bound Action / Macro Sequence:</label>
+            <input type="text" id="keymap-action-input" class="modal-input" placeholder="e.g. {F1}, m0a*t, R&amp;\n, \e, ^S" autocomplete="off" autocapitalize="none">
+          </div>
+
+          <!-- Function Key Palette Section (F1 ~ F12) -->
+          <div class="palette-section">
+            <div class="palette-title">⚡ Function Keys (F1 ~ F12)</div>
+            <div class="fkey-palette-grid">
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F1}" data-fkey="F1">F1</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F2}" data-fkey="F2">F2</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F3}" data-fkey="F3">F3</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F4}" data-fkey="F4">F4</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F5}" data-fkey="F5">F5</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F6}" data-fkey="F6">F6</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F7}" data-fkey="F7">F7</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F8}" data-fkey="F8">F8</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F9}" data-fkey="F9">F9</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F10}" data-fkey="F10">F10</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F11}" data-fkey="F11">F11</button>
+              <button type="button" class="palette-btn fkey-btn" data-insert="{F12}" data-fkey="F12">F12</button>
+            </div>
+          </div>
+
+          <!-- Special Keys Palette Section -->
+          <div class="palette-section">
+            <div class="palette-title">🔤 Special Keys</div>
+            <div class="special-palette-grid">
+              <button type="button" class="palette-btn special-btn" data-insert="\e">⎋ Esc</button>
+              <button type="button" class="palette-btn special-btn" data-insert="\n">⏎ Enter</button>
+              <button type="button" class="palette-btn special-btn" data-insert="\s">⎵ Space</button>
+              <button type="button" class="palette-btn special-btn" data-insert="\t">⇥ Tab</button>
+              <button type="button" class="palette-btn special-btn" data-insert="\b">⌫ BS</button>
+              <button type="button" class="palette-btn special-btn" data-insert="*">🎯 * Target</button>
+              <button type="button" class="palette-btn special-btn" data-insert=".">⏱ . Wait</button>
+            </div>
+          </div>
+
+          <!-- Shortcuts & Macro Templates Section -->
+          <div class="palette-section">
+            <div class="palette-title">🛠 Control &amp; Macro Templates</div>
+            <div class="macro-palette-grid">
+              <button type="button" class="palette-btn macro-chip" data-insert="^S" data-label="^S Save">^S Save</button>
+              <button type="button" class="palette-btn macro-chip" data-insert="^X" data-label="^X Exit">^X Save&amp;Quit</button>
+              <button type="button" class="palette-btn macro-chip" data-insert="^R" data-label="^R Redraw">^R Redraw</button>
+              <button type="button" class="palette-btn macro-chip" data-insert="R&amp;\n" data-label="💤 Rest">💤 Rest Full (R&amp;\n)</button>
+              <button type="button" class="palette-btn macro-chip" data-insert="f*t" data-label="🏹 Fire">🏹 Fire Nearest (f*t)</button>
+              <button type="button" class="palette-btn macro-chip" data-insert="m0a" data-label="✨ Spell">✨ Cast Spell (m0a)</button>
+            </div>
+          </div>
+
+          <label id="editor-ghost-row" class="modal-checkbox-row">
             <input type="checkbox" id="keymap-always-visible">
             <span>Always visible in ghost/translucent mode</span>
           </label>
         </div>
         <div class="modal-footer">
-          <button type="button" id="btn-keymap-clear" class="modal-btn btn-danger">Clear</button>
+          <button type="button" id="btn-keymap-clear" class="modal-btn btn-danger">Delete</button>
           <button type="button" id="btn-keymap-cancel" class="modal-btn btn-secondary">Cancel</button>
-          <button type="button" id="btn-keymap-save" class="modal-btn btn-primary">Save Keymap</button>
+          <button type="button" id="btn-keymap-save" class="modal-btn btn-primary">Save Button</button>
         </div>
       </div>
     </div>

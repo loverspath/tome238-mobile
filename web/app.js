@@ -30,6 +30,61 @@
     'tab': '\t', '⌫': '\x7f', '⏎': '\r', '⎋': '\x1b', '▭': ' ', '↺': '\x12'
   };
 
+  const FUNCTION_KEY_MAP = {
+    f1: '\x1bOP',
+    f2: '\x1bOQ',
+    f3: '\x1bOR',
+    f4: '\x1bOS',
+    f5: '\x1b[15~',
+    f6: '\x1b[17~',
+    f7: '\x1b[18~',
+    f8: '\x1b[19~',
+    f9: '\x1b[20~',
+    f10: '\x1b[21~',
+    f11: '\x1b[23~',
+    f12: '\x1b[24~'
+  };
+
+  const SPECIAL_TOKEN_MAP = {
+    esc: '\x1b',
+    escape: '\x1b',
+    enter: '\r',
+    ret: '\r',
+    return: '\r',
+    tab: '\t',
+    space: ' ',
+    spc: ' ',
+    bs: '\x7f',
+    backspace: '\x7f',
+    wait: '.',
+    rest: '.',
+    target: '*',
+    redraw: '\x12',
+    save: '\x13',
+    quit: '\x18'
+  };
+
+  const DEFAULT_FLOATING_BUTTONS = [
+    { id: 'fb_1', label: 'F1', action: '{F1}', left: null, top: null },
+    { id: 'fb_2', label: 'Rest', action: 'R&\\n', left: null, top: null }
+  ];
+
+  const DEFAULT_RIBBON_BUTTONS = [
+    { label: "💤 Rest", action: "R&\\n" },
+    { label: "🎒 Inven", action: "i" },
+    { label: "✨ Magic", action: "m" },
+    { label: "🗑 Drop", action: "d" },
+    { label: "👁 Look", action: "l" },
+    { label: "🎯 Target", action: "*" },
+    { label: "🏹 Fire", action: "f" },
+    { label: "✋ Pickup", action: "g" },
+    { label: "⚔ Wield", action: "w" },
+    { label: "🧪 Quaff", action: "q" },
+    { label: "📜 Read", action: "r" },
+    { label: "🪄 Use", action: "u" },
+    { label: "🗺 Map", action: "M" }
+  ];
+
   // --- State ---
   const state = {
     ws: null,
@@ -50,6 +105,9 @@
     opacityMode: 0, // 0: Normal, 1: Ghost, 2: Hidden
     fitAxis: 'auto', // 'auto' | 'width' | 'height'
     customKeymaps: {},
+    floatingButtons: [],
+    customRibbon: [],
+    editorTarget: null,
     editingTrigger: null,
     longPressTimer: null,
     skipNextClick: false,
@@ -71,6 +129,7 @@
   const elBtnRestart = document.getElementById('btn-restart');
   const elKeyboardPanel = document.getElementById('keyboard-panel');
   const elFloatingDpad = document.getElementById('floating-dpad');
+  const elFloatingButtonsLayer = document.getElementById('floating-buttons-layer');
   const elRibbonBar = document.getElementById('ribbon-bar');
   const elDynamicRibbon = document.getElementById('dynamic-ribbon');
   const elTerminalWrapper = document.getElementById('terminal-wrapper');
@@ -88,10 +147,14 @@
   const elPrefOverlap = document.getElementById('pref-overlap');
   const elPrefEnableDpad = document.getElementById('pref-enable-dpad');
 
-  // OptionPopup Modal
+  // Button & Keymap Editor Modal
   const elKeymapModal = document.getElementById('keymap-modal');
+  const elEditorModalTitle = document.getElementById('editor-modal-title');
   const elKeymapBadge = document.getElementById('keymap-trigger-badge');
+  const elEditorLabelGroup = document.getElementById('editor-label-group');
+  const elKeymapLabelInput = document.getElementById('keymap-label-input');
   const elKeymapInput = document.getElementById('keymap-action-input');
+  const elEditorGhostRow = document.getElementById('editor-ghost-row');
   const elKeymapCheck = document.getElementById('keymap-always-visible');
   const elBtnKeymapSave = document.getElementById('btn-keymap-save');
   const elBtnKeymapClear = document.getElementById('btn-keymap-clear');
@@ -109,9 +172,7 @@
   const elBtnCrashCopy = document.getElementById('btn-crash-copy');
   const elBtnCrashRestart = document.getElementById('btn-crash-restart');
 
-  const defaultDynamicRibbonHTML = elDynamicRibbon.innerHTML;
-
-  // --- Keymap Persistence ---
+  // --- Persistence Engines (Keymaps, Floating Buttons, Custom Ribbon) ---
   function loadPersistedKeymaps() {
     const raw = localStorage.getItem('tome_adv_keymaps');
     state.customKeymaps = {};
@@ -138,6 +199,42 @@
       }
     }
     localStorage.setItem('tome_adv_keymaps', arr.join(':sep:'));
+  }
+
+  function loadFloatingButtons() {
+    const raw = localStorage.getItem('tome_floating_buttons');
+    if (raw) {
+      try {
+        state.floatingButtons = JSON.parse(raw);
+        if (!Array.isArray(state.floatingButtons)) state.floatingButtons = [];
+      } catch (e) {
+        state.floatingButtons = JSON.parse(JSON.stringify(DEFAULT_FLOATING_BUTTONS));
+      }
+    } else {
+      state.floatingButtons = JSON.parse(JSON.stringify(DEFAULT_FLOATING_BUTTONS));
+    }
+  }
+
+  function persistFloatingButtons() {
+    localStorage.setItem('tome_floating_buttons', JSON.stringify(state.floatingButtons));
+  }
+
+  function loadCustomRibbon() {
+    const raw = localStorage.getItem('tome_custom_ribbon');
+    if (raw) {
+      try {
+        state.customRibbon = JSON.parse(raw);
+        if (!Array.isArray(state.customRibbon)) state.customRibbon = [];
+      } catch (e) {
+        state.customRibbon = JSON.parse(JSON.stringify(DEFAULT_RIBBON_BUTTONS));
+      }
+    } else {
+      state.customRibbon = JSON.parse(JSON.stringify(DEFAULT_RIBBON_BUTTONS));
+    }
+  }
+
+  function persistRibbon() {
+    localStorage.setItem('tome_custom_ribbon', JSON.stringify(state.customRibbon));
   }
 
   // --- Terminal Initialization & Viewport Auto-Fitter ---
@@ -394,23 +491,54 @@
     }
   }
 
-  // --- Input Resolution Engine (InputUtils.java) ---
+  // --- Input Resolution Engine (InputUtils.java & Function Key / Macro Parser) ---
   function parseActionString(txt) {
+    if (!txt) return '';
+
+    // Standalone F1 ~ F12 shorthand without braces
+    const trimmed = txt.trim().toLowerCase();
+    if (FUNCTION_KEY_MAP[trimmed]) {
+      return FUNCTION_KEY_MAP[trimmed];
+    }
+
     const result = [];
     let i = 0;
     const n = txt.length;
 
     while (i < n) {
       const ch0 = txt.charAt(i);
-      const next = (i + 1 < n) ? txt.charAt(i + 1) : '';
 
+      // Handle {TOKEN} (e.g. {F1}, {F12}, {ESC}, {ENTER}, {SPACE}, {TAB}, etc.)
+      if (ch0 === '{') {
+        const closeIdx = txt.indexOf('}', i + 1);
+        if (closeIdx !== -1) {
+          const token = txt.substring(i + 1, closeIdx).trim().toLowerCase();
+          if (FUNCTION_KEY_MAP[token]) {
+            result.push(FUNCTION_KEY_MAP[token]);
+            i = closeIdx + 1;
+            continue;
+          } else if (SPECIAL_TOKEN_MAP[token] !== undefined) {
+            result.push(SPECIAL_TOKEN_MAP[token]);
+            i = closeIdx + 1;
+            continue;
+          }
+        }
+      }
+
+      // Handle ^X (Control key shortcuts like ^S, ^X, ^R, ^A-Z)
+      const next = (i + 1 < n) ? txt.charAt(i + 1) : '';
       if (ch0 === '^' && /[a-zA-Z]/.test(next)) {
         const code = next.toUpperCase().charCodeAt(0) - 64;
         result.push(String.fromCharCode(code));
         i += 2;
-      } else if (ch0 === '\\') {
+        continue;
+      }
+
+      // Handle \n, \r, \e, \t, \s, \b escape sequences
+      if (ch0 === '\\') {
         switch (next.toLowerCase()) {
           case 'n': result.push('\r'); break;
+          case 'r': result.push('\r'); break;
           case 'e': result.push('\x1b'); break;
           case 't': result.push('\t'); break;
           case 's': result.push(' '); break;
@@ -418,10 +546,11 @@
           default: result.push(next); break;
         }
         i += 2;
-      } else {
-        result.push(ch0);
-        i += 1;
+        continue;
       }
+
+      result.push(ch0);
+      i += 1;
     }
     return result.join('');
   }
@@ -610,6 +739,13 @@
       return;
     }
 
+    if (defaultValue === InputUtils.Escape || defaultValue === '⎋') {
+      sendRaw('\x1b');
+      exitShiftMode();
+      resetPage();
+      return;
+    }
+
     if (state.keymapMode && state.customKeymaps[defaultValue]) {
       const custom = state.customKeymaps[defaultValue];
       if (custom && custom.action) {
@@ -727,6 +863,183 @@
     btn.addEventListener('pointerup', onPointerUp);
     btn.addEventListener('pointercancel', onPointerCancel);
     btn.addEventListener('pointerleave', onPointerCancel);
+  }
+
+  // --- Floating Action Buttons System (Draggable Touch Shortcuts & F-Keys) ---
+  function renderFloatingButtons() {
+    if (!elFloatingButtonsLayer) return;
+    elFloatingButtonsLayer.innerHTML = '';
+
+    state.floatingButtons.forEach((fb, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'floating-action-btn';
+      btn.setAttribute('data-fb-id', fb.id);
+      btn.textContent = fb.label || 'Btn';
+      btn.title = `${fb.label || 'Btn'}: ${fb.action} (Hold to edit/drag)`;
+
+      let left = fb.left;
+      let top = fb.top;
+      if (left == null || top == null) {
+        left = Math.max(10, window.innerWidth - 75);
+        top = Math.max(60, Math.min(window.innerHeight - 100, 160 + idx * 56));
+        fb.left = left;
+        fb.top = top;
+      }
+      btn.style.left = `${left}px`;
+      btn.style.top = `${top}px`;
+
+      bindFloatingButtonEvents(btn, fb);
+      elFloatingButtonsLayer.appendChild(btn);
+    });
+  }
+
+  function bindFloatingButtonEvents(btn, fb) {
+    let isDragging = false;
+    let dragThresholdPassed = false;
+    let isLongPress = false;
+    let startX = 0;
+    let startY = 0;
+    let initialX = 0;
+    let initialY = 0;
+    let longPressTimer = null;
+
+    const onPointerDown = (e) => {
+      isDragging = true;
+      dragThresholdPassed = false;
+      isLongPress = false;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const rect = btn.getBoundingClientRect();
+      initialX = rect.left;
+      initialY = rect.top;
+
+      try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+      btn.classList.add('pressed');
+
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        if (!dragThresholdPassed) {
+          isLongPress = true;
+          haptic();
+          btn.classList.remove('pressed');
+          openButtonEditor({ type: 'floating', id: fb.id, isNew: false });
+        }
+      }, 1000);
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (!dragThresholdPassed && Math.hypot(dx, dy) > 6) {
+        dragThresholdPassed = true;
+        clearTimeout(longPressTimer);
+      }
+
+      if (dragThresholdPassed) {
+        let newX = initialX + dx;
+        let newY = initialY + dy;
+
+        newX = Math.max(0, Math.min(window.innerWidth - btn.offsetWidth, newX));
+        newY = Math.max(0, Math.min(window.innerHeight - btn.offsetHeight, newY));
+
+        btn.style.left = `${newX}px`;
+        btn.style.top = `${newY}px`;
+        fb.left = Math.round(newX);
+        fb.top = Math.round(newY);
+      }
+    };
+
+    const onPointerUp = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      clearTimeout(longPressTimer);
+      btn.classList.remove('pressed');
+
+      try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
+
+      if (dragThresholdPassed) {
+        persistFloatingButtons();
+      } else if (!isLongPress) {
+        haptic();
+        processAction(fb.action);
+      }
+    };
+
+    btn.addEventListener('pointerdown', onPointerDown);
+    btn.addEventListener('pointermove', onPointerMove);
+    btn.addEventListener('pointerup', onPointerUp);
+    btn.addEventListener('pointercancel', onPointerUp);
+  }
+
+  // --- Dynamic Action Ribbon Controller ---
+  function renderDynamicRibbon() {
+    if (!elDynamicRibbon) return;
+    if (contextMode === 'yes_no') return;
+
+    elDynamicRibbon.innerHTML = '';
+    state.customRibbon.forEach((rb, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ribbon-btn';
+      if (rb.action && (rb.action.includes('\n') || rb.action.includes('\\n'))) {
+        btn.classList.add('macro-btn');
+      }
+      btn.setAttribute('data-key', rb.action);
+      btn.setAttribute('data-ribbon-idx', idx);
+      btn.textContent = rb.label;
+
+      bindRibbonButtonEvents(btn, idx, rb);
+      elDynamicRibbon.appendChild(btn);
+    });
+
+    // Append '+' Add Ribbon Button
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'ribbon-btn ribbon-add-btn';
+    addBtn.id = 'btn-ribbon-add';
+    addBtn.title = 'Add Ribbon Button';
+    addBtn.textContent = '➕';
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      haptic();
+      openButtonEditor({ type: 'ribbon', isNew: true });
+    });
+    elDynamicRibbon.appendChild(addBtn);
+  }
+
+  function bindRibbonButtonEvents(btn, idx, rb) {
+    let longPressTimer = null;
+    let didLongPress = false;
+
+    const onPointerDown = () => {
+      didLongPress = false;
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        didLongPress = true;
+        haptic();
+        openButtonEditor({ type: 'ribbon', index: idx, isNew: false, label: rb.label, action: rb.action });
+      }, 1000);
+    };
+
+    const onPointerUp = () => {
+      clearTimeout(longPressTimer);
+    };
+
+    btn.addEventListener('pointerdown', onPointerDown);
+    btn.addEventListener('pointerup', onPointerUp);
+    btn.addEventListener('pointercancel', onPointerUp);
+    btn.addEventListener('pointerleave', onPointerUp);
+
+    btn.addEventListener('click', (e) => {
+      if (didLongPress) {
+        e.stopImmediatePropagation();
+        didLongPress = false;
+      }
+    });
   }
 
   // --- 3x3 Floating Touch D-Pad with Drag & Drop (Screenshots 1, 7, 8) ---
@@ -894,10 +1207,12 @@
             adjustTerminalScale();
             break;
           case 'add-floating':
-            const key = prompt('Enter shortcut key/command for floating button (e.g. m, f, R*):');
-            if (key) {
-              alert(`Floating button [${key}] created (feature stub).`);
-            }
+            openButtonEditor({ type: 'floating', isNew: true });
+            break;
+          case 'reset-ribbon':
+            state.customRibbon = JSON.parse(JSON.stringify(DEFAULT_RIBBON_BUTTONS));
+            persistRibbon();
+            renderDynamicRibbon();
             break;
           case 'toggle-dock':
             applyDockMode(state.dockMode === 'docked' ? 'overlap' : 'docked');
@@ -993,73 +1308,237 @@
     adjustTerminalScale();
   }
 
-  // --- OptionPopup Modal Dialog Controller ---
+  // --- Universal Button & Macro Editor Controller ---
   function openOptionPopup(trigger) {
-    haptic();
-    state.editingTrigger = trigger;
-    elKeymapBadge.textContent = `Key: [ ${trigger} ]`;
-
-    const existing = state.customKeymaps[trigger] || { action: '', alwaysVisible: false };
-    elKeymapInput.value = existing.action;
-    elKeymapCheck.checked = existing.alwaysVisible;
-
-    elKeymapModal.classList.remove('hidden-modal');
-    elKeymapInput.focus();
+    openButtonEditor({ type: 'key', trigger: trigger });
   }
 
   function closeOptionPopup() {
+    closeButtonEditor();
+  }
+
+  function insertIntoActionInput(str) {
+    const input = elKeymapInput;
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const val = input.value;
+    input.value = val.substring(0, start) + str + val.substring(end);
+    input.selectionStart = input.selectionEnd = start + str.length;
+    input.focus();
+  }
+
+  function openButtonEditor(target) {
+    haptic();
+    state.editorTarget = target;
+
+    elKeymapInput.value = '';
+    if (elKeymapLabelInput) elKeymapLabelInput.value = '';
+    if (elKeymapCheck) elKeymapCheck.checked = false;
+
+    if (target.type === 'key') {
+      const trigger = target.trigger;
+      state.editingTrigger = trigger;
+      if (elEditorModalTitle) elEditorModalTitle.textContent = '⚙ Keymap Editor';
+      elKeymapBadge.textContent = `Key: [ ${trigger} ]`;
+      if (elEditorLabelGroup) elEditorLabelGroup.style.display = 'none';
+      if (elEditorGhostRow) elEditorGhostRow.style.display = 'flex';
+      elBtnKeymapClear.textContent = 'Clear';
+      elBtnKeymapClear.style.display = 'inline-block';
+      elBtnKeymapSave.textContent = 'Save Keymap';
+
+      const existing = state.customKeymaps[trigger] || { action: '', alwaysVisible: false };
+      elKeymapInput.value = existing.action;
+      if (elKeymapCheck) elKeymapCheck.checked = existing.alwaysVisible;
+    } else if (target.type === 'floating') {
+      if (elEditorModalTitle) elEditorModalTitle.textContent = target.isNew ? '➕ Add Floating Button' : '⚙ Edit Floating Button';
+      elKeymapBadge.textContent = target.isNew ? 'Floating Button (New)' : 'Floating Button';
+      if (elEditorLabelGroup) elEditorLabelGroup.style.display = 'flex';
+      if (elEditorGhostRow) elEditorGhostRow.style.display = 'none';
+      elBtnKeymapClear.textContent = 'Delete';
+      elBtnKeymapClear.style.display = target.isNew ? 'none' : 'inline-block';
+      elBtnKeymapSave.textContent = 'Save Button';
+
+      if (!target.isNew) {
+        const fb = state.floatingButtons.find(b => b.id === target.id);
+        if (fb) {
+          if (elKeymapLabelInput) elKeymapLabelInput.value = fb.label;
+          elKeymapInput.value = fb.action;
+        }
+      }
+    } else if (target.type === 'ribbon') {
+      if (elEditorModalTitle) elEditorModalTitle.textContent = target.isNew ? '➕ Add Ribbon Button' : '⚙ Edit Ribbon Button';
+      elKeymapBadge.textContent = target.isNew ? 'Ribbon Button (New)' : `Ribbon Button #${target.index + 1}`;
+      if (elEditorLabelGroup) elEditorLabelGroup.style.display = 'flex';
+      if (elEditorGhostRow) elEditorGhostRow.style.display = 'none';
+      elBtnKeymapClear.textContent = 'Delete';
+      elBtnKeymapClear.style.display = target.isNew ? 'none' : 'inline-block';
+      elBtnKeymapSave.textContent = 'Save Button';
+
+      if (!target.isNew) {
+        const rb = state.customRibbon[target.index];
+        if (rb) {
+          if (elKeymapLabelInput) elKeymapLabelInput.value = rb.label;
+          elKeymapInput.value = rb.action;
+        }
+      }
+    }
+
+    elKeymapModal.classList.remove('hidden-modal');
+    if (target.type !== 'key' && elKeymapLabelInput && !elKeymapLabelInput.value) {
+      elKeymapLabelInput.focus();
+    } else {
+      elKeymapInput.focus();
+    }
+  }
+
+  function closeButtonEditor() {
     elKeymapModal.classList.add('hidden-modal');
+    state.editorTarget = null;
     state.editingTrigger = null;
   }
 
-  function setupOptionPopup() {
-    const insertButtons = elKeymapModal.querySelectorAll('.quick-insert-btn');
-    insertButtons.forEach(b => {
-      b.addEventListener('click', () => {
+  function setupButtonEditor() {
+    // F-Keys Palette Buttons (F1 ~ F12)
+    const fkeyBtns = elKeymapModal.querySelectorAll('.fkey-btn');
+    fkeyBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
         haptic();
-        const str = b.getAttribute('data-insert');
-        elKeymapInput.value += str;
-        elKeymapInput.focus();
+        const fkey = btn.getAttribute('data-fkey');
+        const token = btn.getAttribute('data-insert') || `{${fkey}}`;
+        insertIntoActionInput(token);
+
+        if (elKeymapLabelInput && (!elKeymapLabelInput.value || /^F[0-9]{1,2}$/i.test(elKeymapLabelInput.value.trim()))) {
+          elKeymapLabelInput.value = fkey;
+        }
       });
     });
 
+    // Special Keys Buttons
+    const specialBtns = elKeymapModal.querySelectorAll('.special-btn');
+    specialBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        haptic();
+        const str = btn.getAttribute('data-insert');
+        insertIntoActionInput(str);
+      });
+    });
+
+    // Control & Macro Template Chips
+    const macroChips = elKeymapModal.querySelectorAll('.macro-chip');
+    macroChips.forEach(btn => {
+      btn.addEventListener('click', () => {
+        haptic();
+        const str = btn.getAttribute('data-insert');
+        const label = btn.getAttribute('data-label');
+        insertIntoActionInput(str);
+        if (elKeymapLabelInput && !elKeymapLabelInput.value && label) {
+          elKeymapLabelInput.value = label;
+        }
+      });
+    });
+
+    // Save Button
     elBtnKeymapSave.addEventListener('click', () => {
       haptic();
-      const trigger = state.editingTrigger;
-      if (!trigger) return;
+      const target = state.editorTarget;
+      if (!target) return;
 
       const action = elKeymapInput.value.trim();
-      const alwaysVisible = elKeymapCheck.checked;
+      const label = elKeymapLabelInput ? elKeymapLabelInput.value.trim() : '';
+      const alwaysVisible = elKeymapCheck ? elKeymapCheck.checked : false;
 
-      if (action.length > 0) {
-        state.customKeymaps[trigger] = { action, alwaysVisible };
-      } else {
-        delete state.customKeymaps[trigger];
+      if (target.type === 'key') {
+        const trigger = target.trigger;
+        if (action.length > 0) {
+          state.customKeymaps[trigger] = { action, alwaysVisible };
+        } else {
+          delete state.customKeymaps[trigger];
+        }
+        persistKeymaps();
+        renderKeyboard();
+      } else if (target.type === 'floating') {
+        if (action.length > 0) {
+          if (target.isNew) {
+            const newId = 'fb_' + Date.now();
+            const defLeft = Math.max(10, window.innerWidth - 75);
+            const defTop = Math.max(60, Math.min(window.innerHeight - 100, 160 + state.floatingButtons.length * 56));
+            state.floatingButtons.push({
+              id: newId,
+              label: label || action,
+              action: action,
+              left: defLeft,
+              top: defTop
+            });
+          } else {
+            const fb = state.floatingButtons.find(b => b.id === target.id);
+            if (fb) {
+              fb.label = label || action;
+              fb.action = action;
+            }
+          }
+          persistFloatingButtons();
+          renderFloatingButtons();
+        }
+      } else if (target.type === 'ribbon') {
+        if (action.length > 0) {
+          if (target.isNew) {
+            state.customRibbon.push({
+              label: label || action,
+              action: action
+            });
+          } else {
+            if (state.customRibbon[target.index]) {
+              state.customRibbon[target.index] = {
+                label: label || action,
+                action: action
+              };
+            }
+          }
+          persistRibbon();
+          renderDynamicRibbon();
+        }
       }
 
-      persistKeymaps();
-      closeOptionPopup();
-      renderKeyboard();
+      closeButtonEditor();
     });
 
+    // Delete / Clear Button
     elBtnKeymapClear.addEventListener('click', () => {
       haptic();
-      const trigger = state.editingTrigger;
-      if (!trigger) return;
+      const target = state.editorTarget;
+      if (!target) return;
 
-      delete state.customKeymaps[trigger];
-      persistKeymaps();
-      closeOptionPopup();
-      renderKeyboard();
+      if (target.type === 'key') {
+        const trigger = target.trigger;
+        delete state.customKeymaps[trigger];
+        persistKeymaps();
+        renderKeyboard();
+      } else if (target.type === 'floating') {
+        if (!target.isNew) {
+          state.floatingButtons = state.floatingButtons.filter(b => b.id !== target.id);
+          persistFloatingButtons();
+          renderFloatingButtons();
+        }
+      } else if (target.type === 'ribbon') {
+        if (!target.isNew && target.index >= 0) {
+          state.customRibbon.splice(target.index, 1);
+          persistRibbon();
+          renderDynamicRibbon();
+        }
+      }
+
+      closeButtonEditor();
     });
 
+    // Cancel Button
     elBtnKeymapCancel.addEventListener('click', () => {
-      closeOptionPopup();
+      closeButtonEditor();
     });
 
+    // Backdrop Click
     elKeymapModal.addEventListener('click', (e) => {
       if (e.target === elKeymapModal) {
-        closeOptionPopup();
+        closeButtonEditor();
       }
     });
   }
@@ -1179,7 +1658,7 @@ ${info.stderr || '(empty)'}
       `;
     } else if (!matchedRule && contextMode === 'yes_no') {
       contextMode = 'normal';
-      elDynamicRibbon.innerHTML = defaultDynamicRibbonHTML;
+      renderDynamicRibbon();
     }
   }
 
@@ -1216,6 +1695,19 @@ ${info.stderr || '(empty)'}
         processAction(rawKey);
       }
     });
+
+    window.addEventListener('resize', () => {
+      // Re-clamp floating buttons to viewport
+      state.floatingButtons.forEach(fb => {
+        if (fb.left != null) {
+          fb.left = Math.max(0, Math.min(window.innerWidth - 60, fb.left));
+        }
+        if (fb.top != null) {
+          fb.top = Math.max(0, Math.min(window.innerHeight - 60, fb.top));
+        }
+      });
+      renderFloatingButtons();
+    });
   }
 
   // --- Dynamic Profile Binding & Startup ---
@@ -1246,13 +1738,17 @@ ${info.stderr || '(empty)'}
     }
 
     loadPersistedKeymaps();
+    loadFloatingButtons();
+    loadCustomRibbon();
     applyDockMode(state.dockMode);
     setupControls();
     setupQuickSettings();
     setupPreferences();
-    setupOptionPopup();
+    setupButtonEditor();
     setupCrashModal();
     setupFloatingDpad();
+    renderFloatingButtons();
+    renderDynamicRibbon();
     applyVisibilityStates();
     initTerminal();
     renderKeyboard();

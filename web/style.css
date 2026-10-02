@@ -393,8 +393,70 @@ html, body {
   color: #93c5fd;
 }
 
+.ribbon-btn.ribbon-add-btn {
+  background-color: rgba(0, 255, 255, 0.2);
+  border-color: rgba(0, 255, 255, 0.6);
+  color: #00ffff;
+  font-size: 13px;
+  padding: 0 10px;
+}
+
+.ribbon-btn.ribbon-add-btn:active {
+  background-color: #00ffff;
+  color: #000;
+}
+
 .hidden-ribbon {
   display: none !important;
+}
+
+/* --- Floating Action Buttons Layer (Draggable Neon Cyan Touch Buttons) --- */
+.floating-buttons-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 55;
+  overflow: hidden;
+}
+
+.floating-action-btn {
+  position: absolute;
+  pointer-events: auto;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 14px;
+  background: rgba(16, 26, 36, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 255, 0.55);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.28), inset 0 0 8px rgba(0, 255, 255, 0.16);
+  border-radius: 22px;
+  color: var(--neon-cyan);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  white-space: nowrap;
+  transition: transform 0.08s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.floating-action-btn:active, .floating-action-btn.pressed {
+  cursor: grabbing;
+  transform: scale(0.92);
+  background: rgba(0, 255, 255, 0.32);
+  box-shadow: 0 0 18px rgba(0, 255, 255, 0.65), inset 0 0 12px rgba(0, 255, 255, 0.35);
+  border-color: #00ffff;
+  color: #ffffff;
 }
 
 /* --- Virtual Input Controller (Screenshots 1, 7, 8 Neon Cyan Keyboard) --- */
@@ -639,17 +701,23 @@ html, body {
   margin-top: 2px;
 }
 
-/* --- OptionPopup Keymap Editor Dialog --- */
+/* --- Universal Button & Macro Editor Dialog --- */
 .modal-dialog {
   background: #1c1c24;
   border: 1px solid #3b3a4a;
   border-radius: 10px;
   width: 100%;
-  max-width: 380px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+  max-width: 440px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.editor-dialog {
+  max-width: 440px;
+  max-height: 88vh;
+  max-height: 88dvh;
 }
 
 .modal-header {
@@ -685,22 +753,36 @@ html, body {
   gap: 10px;
 }
 
+.editor-scroll-body {
+  max-height: calc(88vh - 110px);
+  max-height: calc(88dvh - 110px);
+  overflow-y: auto;
+  padding: 14px 16px;
+  gap: 10px;
+}
+
+.editor-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .modal-label {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--fg-dim);
 }
 
 .modal-input {
   width: 100%;
-  height: 38px;
+  height: 36px;
   background: #111116;
   border: 1px solid #3b3a4a;
   border-radius: 6px;
   color: #fff;
   padding: 0 10px;
   font-family: monospace;
-  font-size: 14px;
+  font-size: 13.5px;
   outline: none;
 }
 
@@ -709,28 +791,92 @@ html, body {
   box-shadow: 0 0 0 2px rgba(0, 255, 255, 0.25);
 }
 
-.quick-insert-bar {
+.palette-section {
+  background: #13141c;
+  border: 1px solid #282a38;
+  border-radius: 8px;
+  padding: 8px 10px;
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.palette-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  letter-spacing: 0.3px;
+}
+
+.fkey-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
 }
 
-.quick-insert-btn {
-  flex: 1;
+.special-palette-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.macro-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.palette-btn {
   height: 28px;
-  background: #252430;
-  border: 1px solid #3d3b4d;
-  color: var(--neon-cyan);
-  border-radius: 4px;
+  background: #20222f;
+  border: 1px solid #373a50;
+  color: #f3f4f6;
+  border-radius: 5px;
   font-size: 11px;
-  font-family: monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
   font-weight: 600;
   cursor: pointer;
   touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
 }
 
-.quick-insert-btn:active {
+.palette-btn:active {
   background: var(--neon-cyan);
   color: #000;
+  transform: scale(0.95);
+}
+
+.fkey-btn {
+  color: var(--neon-cyan);
+  font-family: monospace;
+  font-weight: 700;
+  background: #182230;
+  border-color: #263e52;
+}
+
+.fkey-btn:active {
+  background: #00ffff;
+  color: #000;
+}
+
+.special-btn {
+  flex: 1 1 calc(25% - 4px);
+  min-width: 48px;
+  font-size: 10.5px;
+}
+
+.macro-chip {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+  background: #1c2638;
+  border-color: #2c3f5c;
+  color: #93c5fd;
 }
 
 .modal-checkbox-row {
