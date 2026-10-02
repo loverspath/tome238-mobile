@@ -29,6 +29,7 @@
 | **PRF Settings & Macro Persistence** | Stored inside source tree (`game/lib/user/`), wiped or dirtying repo | Isolated in `saves/user/` via symlink + `fd_make` `EEXIST` fallback | User macros (`*.prf`), options, and automator rules persist across updates without repo pollution. |
 | **Hall of Fame (`scores.raw`)** | Tracked in git (`game/lib/apex/scores.raw`), causing dirty worktree conflicts | Isolated in `saves/scores.raw` via symlink, ignored in git | High scores persist across updates and deaths without git stash or merge friction. |
 | **Terminal Left-Edge Clipping** | Narrow 2px margins and 0.58 aspect ratio clipping column 0 on curved screens | 12px horizontal safety margin, 0.61 aspect ratio, and 4px padding | Guarantees 100% complete visibility of leftmost stats, health bars, and dungeon boundaries. |
+| **Runecraft Magic Engine (TomeNET Integration)** | Isolated spellbook casting or fixed magic systems | Full TomeNET Runecraft engine ported to Lua 4.0 (`runecraft.lua`) via C Mkey Hook (`09m` / `m` -> `c`) | Grants Adventurer class 21 elements, 8 forms, 7 modes (with Brief dual-casting), Int/Dex scaling, and backlash protection. |
 
 ---
 
@@ -126,12 +127,12 @@ Integration of the TomeNET Runecraft engine into ToME 2.3.8-ah follows a modular
 ```mermaid
 flowchart TD
     P1["Phase 1: Archaeology & Semantic Mapping<br>(COMPLETE)"]
-    P2["Phase 2: Lua Engine & m-key Binding<br>(PLANNED)"]
-    P3["Phase 3: C Core Primitives Extensions<br>(PLANNED)"]
-    P4["Phase 4: Mobile Web Virtual Rune Wheel<br>(PLANNED)"]
+    P2["Phase 2: Lua Engine & m-key Binding<br>(COMPLETE)"]
+    P3["Phase 3: C Core Hook & Interception<br>(COMPLETE)"]
+    P4["Phase 4: Mobile Web Virtual Rune Wheel UI<br>(PLANNED)"]
 
-    P1 -->|Specifies 90% Direct Reuse| P2
-    P1 -->|Identifies 3 Small Adapters| P3
+    P1 -->|Specifies 1:1 Primitives| P2
+    P1 -->|Specifies Mkey Interception| P3
     P2 --> P4
     P3 --> P4
 ```
@@ -140,17 +141,19 @@ flowchart TD
 - **TomeNET Reverse-Engineering**: Extracted complete 32-bit bitmask encoding, formulas, and element tables into [`docs/tomenet_runecraft_spec.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/tomenet_runecraft_spec.md).
 - **Core Engine Investigation**: Proved that ToME 2.3.8-ah already includes 100% of the 21 elemental projection types (`GF_*`), projectile functions (`fire_bolt`, `fire_ball`, `fire_cloud`, `fire_wave`), and the `unsafe = TRUE` player backlash mechanism. Detailed in [`docs/runecraft_mapping.md`](file:///data/data/com.termux/files/home/tome238-mobile/docs/runecraft_mapping.md).
 
-### Phase 2: Lua Engine & m-key Binding (Planned)
-- Implement `game/lib/scpt/runecraft.lua`:
-  - Port TomeNET's single-player casting logic without multiplayer network packets.
-  - Calculate casting failure using INT (65%) and DEX (35%) weights against `p_ptr->stat_ind`.
-  - Wire backlash damage directly to `project(-1, 0, p_ptr->py, p_ptr->px, dam, typ, PROJECT_KILL)` with `unsafe = TRUE`.
-- Register the Runecraft skill command in [`game/lib/scpt/mkeys.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/mkeys.lua) under Skill ID 34.
+### Phase 2: Lua Engine & m-key Binding (Complete)
+- **Engine Script ([`game/lib/scpt/runecraft.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/runecraft.lua))**:
+  - Implemented pure Lua 4.0 compliant Runecraft engine covering 21 elements, 8 spell forms, and 7 spell modes.
+  - Calculated failure rates with INT (65%) and DEX (35%) weights against `p_ptr->stat_ind`.
+  - Wired backlash damage to `project(-2, 0, py, px, backlash, elem.gf, ...)` with elemental resistances and suicide prevention guard.
+- **Hook Binding**: Registered M-key hook for action 9 (`RC_ACTION_MKEY`) bound to `do_runecraft()`, loaded automatically during engine startup in [`game/lib/scpt/init.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/init.lua).
 
-### Phase 3: C Core Primitives Extensions (Planned - ~40 Lines of C)
-- **`fire_burst()` Adapter**: Add a uniform damage radius explosion in [`game/src/spells2.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/spells2.c) that bypasses distance-based falloff.
-- **`explosive_rune_ext()` Adapter**: Enhance [`spells2.c:169`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/spells2.c#L169) `explosive_rune()` to pass custom element types (`typ`) and damage (`dam`) to floor glyphs.
-- **`Nimbus` Shield State**: Add `nimbus`, `nimbus_t`, and `nimbus_d` timers to `player_type` in [`game/src/types.h`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/types.h) and inject a 15-line counter-attack explosion hook into [`game/src/melee2.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/melee2.c).
+### Phase 3: C Core Hook & Interception (Complete)
+- **MKEY Interception ([`game/src/skills.c:995-1000`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/skills.c#L995-L1000) & [`game/src/cmd7.c:6918-6923`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/cmd7.c#L6918-L6923))**:
+  - Intercepted `MKEY_RUNE` (9) via `process_hooks(HOOK_MKEY, "(d)", MKEY_RUNE)` in `do_cmd_activate_skill()` and `do_cmd_runecrafter()`.
+  - Seamlessly redirects skill menu activation (`m` -> `c`) and direct macro invocation (`09m`) to Lua 4.0 `do_runecraft()`.
+- **Ingame Help Suppression ([`game/src/tables.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/tables.c) & [`game/src/variable.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/variable.c))**:
+  - Disabled default `option_ingame_help` to prevent intrusive help screens from disrupting prompt sequences during rune and skill selection.
 
 ### Phase 4: Mobile Web Virtual Rune Wheel UI (Planned)
 - Design a radial or carousel 6-rune touch wheel overlay in the web frontend ([`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js)).
@@ -414,7 +417,70 @@ During extended mobile gameplay and testing, four critical persistence and visua
   1. `test_symlinks()`: Verifies that `game/lib/apex/scores.raw`, `game/lib/user`, and `game/lib/save` are genuine symlinks correctly pointing into `saves/`.
   2. `test_scores_raw_rw()`: Appends a 150-byte score record through the symlink, asserts that `saves/scores.raw` increases by exactly 150 bytes, and verifies byte-for-byte read-back integrity.
   3. `test_prf_save_and_load()`: Drives a headless PTY birth sequence into Bree, triggers an in-game macro dump (`@ -> 2 -> <char>.prf`), and validates that `# Automatic macro dump` with active macros is written into `saves/user/<char>.prf`.
-- Integrated into the master test runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) as stage `[7/7]`.
+- Integrated into the master test runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) as stage `[7/8]`.
+
+### 4.7 TomeNET Runecraft Integration for Adventurer Class (C Mkey Hook, Lua 4.0 Engine, Backlash & 8-Stage Regression)
+
+#### C Engine MKEY Interception
+In legacy ToME 2.3.8-ah, the Runecrafter skill command was hardcoded in C (`do_cmd_runecrafter()` in `cmd7.c`) to an unfinished, non-functional menu. To empower the Adventurer class with full dynamic Runecraft:
+1. **Hook Interception in C Engine ([`game/src/skills.c:995-1000`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/skills.c#L995-L1000) & [`game/src/cmd7.c:6918-6923`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/cmd7.c#L6918-L6923))**:
+   - In `do_cmd_activate_skill()` (`skills.c`), intercepted `MKEY_RUNE`:
+     ```c
+     case MKEY_RUNE:
+         if (!process_hooks(HOOK_MKEY, "(d)", x_idx))
+             do_cmd_runecrafter();
+         break;
+     ```
+   - In `do_cmd_runecrafter()` (`cmd7.c`), added immediate hook escape:
+     ```c
+     if (process_hooks(HOOK_MKEY, "(d)", MKEY_RUNE)) return;
+     ```
+   - This cleanly redirects both skill menu selection (`m` -> `c`) and direct action execution (`09m`) to Lua 4.0's registered `add_mkey` hook without altering core game loop state.
+2. **Ingame Contextual Help Suppression ([`game/src/tables.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/tables.c) & [`game/src/variable.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/variable.c))**:
+   - Initialized `option_ingame_help = FALSE` (previously `TRUE`), preventing full-screen help screens from interrupting interactive multi-prompt keystroke chains (`09m`, `m` -> `c`).
+
+#### Lua 4.0 Compliant Runecraft Engine ([`game/lib/scpt/runecraft.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/runecraft.lua))
+Crafted a pure Lua 4.0 compliant Runecraft engine loaded at startup via [`game/lib/scpt/init.lua`](file:///data/data/com.termux/files/home/tome238-mobile/game/lib/scpt/init.lua):
+- **21 Elemental Mappings**:
+  - **4 High-Damage Basics (Weight 1200)**: Fire (`f`, `GF_FIRE`), Cold (`c`, `GF_COLD`), Electricity (`e`, `GF_ELEC`), Acid (`a`, `GF_ACID`).
+  - **6 Fundamental Runes**: Light (`l`, `GF_LITE`), Darkness (`d`, `GF_DARK`), Nether (`n`, `GF_NETHER`), Chaos (`h`, `GF_CHAOS`), Mana (`m`, `GF_MANA`), Nexus (`x`, `GF_NEXUS`).
+  - **11 Compound Combinations**: Poison (`p`, `GF_POIS`), Sound (`s`, `GF_SOUND`), Shards (`r`, `GF_SHARDS`), Force (`o`, `GF_FORCE`), Gravity (`g`, `GF_GRAVITY`), Inertia (`i`, `GF_INERTIA`), Time (`t`, `GF_TIME`), Confusion (`u`, `GF_CONFUSION`), Disenchantment (`k`, `GF_DISENCHANT`), Hellfire (`j`, `GF_HELL_FIRE`), Water (`w`, `GF_WATER`).
+  - Bitwise combination solver (`runecraft_combine(r1, r2)`) maps 2-rune combinations to exact TomeNET elemental properties.
+- **8 Spell Forms**:
+  - Bolt (`b`, base lvl 1, dice damage), Flare (`f`, base lvl 3), Beam (`e`, base lvl 4, dice damage), Ball (`a`, base lvl 7, rad 2), Cloud (`c`, base lvl 10, persistent cloud), Wall (`w`, base lvl 14, directional barrier), Wave (`v`, base lvl 18, expanding wave), Storm (`s`, base lvl 22, rad 2 self-centered tempest).
+- **7 Spell Modes**:
+  - Moderate (`m`, standard 100% cost/dam), Minimized (`i`, 60% cost/dam, -20% fail), Lengthened (`l`, 140% duration), Compressed (`p`, 70% cost, 90% dam, -2 rad), Expanded (`e`, 140% cost, +2 rad), Maximized (`x`, 180% cost, 140% dam, +40% fail).
+  - **Brief Mode (`b`, 50% energy use)**: Requires only 50 energy units instead of 100, enabling dual-casting two Runecraft spells within a single standard game turn.
+
+#### Mathematical Scaling, Backlash & Suicide Prevention Guard
+- **Failure Calculation**:
+  - `base_fail = (15 - min(ability, 15)) * 3 - 13 + mode.fail_mod`
+  - Stat scaling: Weighted Int (65%) and Dex (35%):
+    `stat_bonus = ((int_bonus * 65 + dex_bonus * 35) / 100) - 3`
+  - Clamped between minimum fail rate (`(int_min * 65 + dex_min * 35) / 100`) and 95%, with status penalties for blindness (+10%) and stun (+15% to +25%).
+- **Backlash Damage**:
+  - On failed roll (`magik(fail_rate)`), 20% of calculated damage + 1 is dealt to the caster via `project(-2, 0, player.py, player.px, backlash, elem.gf, bor(PROJECT_KILL, PROJECT_HIDE))`.
+  - Passing `who = -2` leverages ToME's `project_p` path, correctly applying the player's intrinsic and equipment elemental resistances to mitigate the backlash.
+- **Suicide Prevention Guard**:
+  - If calculated `backlash >= player.chp`, the spell is preemptively cancelled:
+    `cmsg_print(TERM_L_RED, "The strain is far too great! (Backlash: X, HP: Y)")`
+  - The caster consumes only 33 energy units and avoids self-inflicted fatality.
+
+#### Hybrid Interface
+- **Direct Macro API (`do_runecraft(opt_rune, opt_form, opt_mode, opt_dir)`)**:
+  - Allows zero-prompt instant casting for mobile floating buttons, presets, and macros (e.g. `do_runecraft("f", "b", "m", 6)` for Moderate Fire Bolt East).
+- **Interactive In-Game Prompts**:
+  - Invoked via `09m` or `m` -> `c` skill selection.
+  - Sequentially queries Rune (`[f]ire [c]old [e]lec ... [?]`), Form (`[b]olt be[e]m b[a]ll ...`), Mode (`[m]od min[i] ... [b]rief`), and Direction with full ESC cancellation support.
+
+#### Automated Regression Testing
+- Implemented comprehensive automated headless PTY test ([`scripts/test_runecraft.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_runecraft.py)):
+  1. `[Test 1]`: Moderate Fire Bolt cast via `09m` interactive sequence (`f` -> `b` -> `m` -> `6`).
+  2. `[Test 2]`: Brief Fire Bolt cast with 50% energy consumption (`f` -> `b` -> `b` -> `6`).
+  3. `[Test 3]`: Skill gate enforcement (Moderate Storm blocked at low level with `"Your skill is not high enough!"`).
+  4. `[Test 4]`: ESC cancellation during prompt sequence cleanly restoring game state and responsiveness.
+  5. `[Test 5]`: Menu-based invocation (`m` -> `c` -> Rune prompt).
+- Integrated into the master test runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) as stage `[8/8]`.
 
 ---
 
