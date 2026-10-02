@@ -26,6 +26,9 @@
 | **Layout & Macro Presets** | Fixed input setup requiring manual re-binding per character | Full layout state serialization (`#presets-modal`) with 3 built-in profiles + custom slots | Allows seamless switching between Warrior, Mage, and minimalist touch setups with instant 1-tap application. |
 | **One-Click Keyboard Toggle** | Multi-level menu navigation to toggle software keyboard | Dedicated top-bar `⌨` button with active amber indicator (`.active-toggled`) | Instantly frees 100% viewport height for exploration and automatically re-scales terminal typography. |
 | **3-Row Compact Simple Keyboard**| Bulky 5x10 keyboard (40~44vh) or none | 22vh compact 3-row layout (`simple_portrait`/`simple_landscape`) with top-bar switcher | Over 50% viewport height savings while preserving essential roguelike commands and numeric keys. |
+| **PRF Settings & Macro Persistence** | Stored inside source tree (`game/lib/user/`), wiped or dirtying repo | Isolated in `saves/user/` via symlink + `fd_make` `EEXIST` fallback | User macros (`*.prf`), options, and automator rules persist across updates without repo pollution. |
+| **Hall of Fame (`scores.raw`)** | Tracked in git (`game/lib/apex/scores.raw`), causing dirty worktree conflicts | Isolated in `saves/scores.raw` via symlink, ignored in git | High scores persist across updates and deaths without git stash or merge friction. |
+| **Terminal Left-Edge Clipping** | Narrow 2px margins and 0.58 aspect ratio clipping column 0 on curved screens | 12px horizontal safety margin, 0.61 aspect ratio, and 4px padding | Guarantees 100% complete visibility of leftmost stats, health bars, and dungeon boundaries. |
 
 ---
 
@@ -362,6 +365,56 @@ In desktop ToME, keyboard shortcuts (such as function keys `F1`~`F12`, macros, a
    - **Streamlined Ergonomics**: Ultra-compact 3-row × 10-column layout defined in [`web/keyboards.json`](file:///data/data/com.termux/files/home/tome238-mobile/web/keyboards.json) dedicating row 0 to primary roguelike interactions (`⎋`, `i`, `m`, `d`, `l`, `*`, `f`, `g`, `⏎`), row 1 to secondary actions (`q`, `r`, `u`, `w`, `M`, `R`, `.`, `o`, `s`), and row 2 to numeric target/selection indices (`1`~`0`).
    - **High-Clearance Viewport (22vh)**: Constrains keyboard height to `22vh` (min 125px, max 185px), freeing over 50% more vertical canvas for the dungeon viewport compared to the standard 5x10 keyboard (40~44vh).
    - **Instant Mode Switching**: Swapped seamlessly via the top action bar's `#btn-switch-kbd-style` switcher pill (`5x10` vs `3-Row`).
+
+### 4.6 PRF (Macro/Options) & Hall of Fame (`scores.raw`) Persistence via Symlink Isolation and Terminal Left-Clipping Fix
+
+#### Root Cause Analysis
+During extended mobile gameplay and testing, four critical persistence and visual rendering defects were identified:
+
+1. **Git-Tracked Zero-Byte `scores.raw` Dirtying Working Tree**:
+   - The upstream repository tracked an empty `game/lib/apex/scores.raw` file in git.
+   - When a character died or the player retired, ToME's high score manager (`files.c`) appended 150-byte binary records into `game/lib/apex/scores.raw`.
+   - Consequently, every completed or failed run produced a dirty working tree, interfering with clean git pulls, automated builds, and test runs.
+2. **Non-Isolated User Preferences Directory (`game/lib/user/`)**:
+   - In-game macro dumps (triggered via `@ -> 2`), user keymap preferences (`user.prf`), and automat rules (`automat.atm`) were written directly into `game/lib/user/`.
+   - Because `game/` is part of the engine build directory rather than the isolated `saves/` partition, player macro configurations were vulnerable to being overwritten or lost during code updates.
+3. **`fd_make()` Failure on Symlinks (`O_CREAT | O_EXCL` with `EEXIST`)**:
+   - In [`game/src/util.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/util.c), the engine's low-level file creation utility `fd_make()` invoked `open(buf, O_CREAT | O_EXCL | O_WRONLY | O_BINARY, mode)`.
+   - Under POSIX and Linux, opening a symlink whose target does not exist yet with `O_CREAT | O_EXCL` fails immediately with `errno == EEXIST`. This prevented the engine from creating new PRF files (e.g. `<char>.prf`) or `scores.raw` when redirected through symlinks.
+4. **Terminal Left-Edge Glyph Clipping on Mobile Displays**:
+   - In [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), `adjustTerminalScale()` computed font width using `clientWidth - 2` with an assumed font aspect ratio of `0.58`.
+   - On modern mobile devices (especially phones with bezel curvature or non-zero viewport offset), column 0 glyphs (such as player attributes `STR`, `INT`, `WIS`, health bars, and left dungeon walls) were clipped by 2~4 pixels.
+
+#### Technical Resolution
+
+1. **Symlink Isolation into `saves/`**:
+   - **Hall of Fame (`scores.raw`)**: Replaced `game/lib/apex/scores.raw` with a symlink pointing to `../../../saves/scores.raw`.
+   - **User Settings & Macros (`user/`)**: Replaced `game/lib/user` with a symlink pointing to `../../saves/user`.
+   - **Git Exclusion**: Added `saves/scores.raw` and `saves/user/` to `.gitignore`, keeping runtime score files and PRF dumps strictly isolated from version control.
+   - **Server Startup Guarantee**: In [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py), `main()` verifies and creates `saves/user/`, `saves/scores.raw`, and default `saves/user/automat.atm` if they do not exist.
+2. **`fd_make()` Symlink `EEXIST` Fallback ([`game/src/util.c:746-756`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/util.c#L746-L756))**:
+   - Modified `fd_make()` to catch `errno == EEXIST` and fall back to opening without `O_EXCL`:
+     ```c
+     int fd = open(buf, O_CREAT | O_EXCL | O_WRONLY | O_BINARY, mode);
+     if (fd < 0 && errno == EEXIST)
+     {
+         /* Fallback for symlinks whose target does not exist yet */
+         fd = open(buf, O_CREAT | O_WRONLY | O_BINARY, mode);
+     }
+     return (fd);
+     ```
+   - This ensures file creation succeeds seamlessly across symbolic links without modifying legacy engine file paths.
+3. **Safe Margin & Aspect Ratio Tuning ([`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js) & [`web/style.css`](file:///data/data/com.termux/files/home/tome238-mobile/web/style.css))**:
+   - In `adjustTerminalScale()`, increased width safety margin from 2px to 12px (`Math.max(0, elTerminalWrapper.clientWidth - 12)`) and height safety margin to 4px.
+   - Tuned `charAspect` from `0.58` to `0.61`, perfectly matching xterm.js canvas rendering on mobile Chrome/Termux.
+   - In `style.css`, added `padding: 0 4px; box-sizing: border-box;` to `#terminal-wrapper`, guaranteeing zero glyph clipping on column 0.
+
+#### Automated Regression Testing
+- Added a dedicated 3-part persistence test ([`scripts/test_persistence.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_persistence.py)):
+  1. `test_symlinks()`: Verifies that `game/lib/apex/scores.raw`, `game/lib/user`, and `game/lib/save` are genuine symlinks correctly pointing into `saves/`.
+  2. `test_scores_raw_rw()`: Appends a 150-byte score record through the symlink, asserts that `saves/scores.raw` increases by exactly 150 bytes, and verifies byte-for-byte read-back integrity.
+  3. `test_prf_save_and_load()`: Drives a headless PTY birth sequence into Bree, triggers an in-game macro dump (`@ -> 2 -> <char>.prf`), and validates that `# Automatic macro dump` with active macros is written into `saves/user/<char>.prf`.
+- Integrated into the master test runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) as stage `[7/7]`.
 
 ---
 

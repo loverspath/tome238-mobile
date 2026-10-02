@@ -16,13 +16,14 @@ All operations can be executed from the project root (`/data/data/com.termux/fil
 | **Run CLI (Local)** | [`./scripts/run.sh`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/run.sh) or `./run` | Launches game directly in local Termux terminal via curses (`main-gcu.c`). |
 | **Run Web Server** | [`./scripts/run_web.sh [PORT]`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/run_web.sh) or `./run_web` | Spawns Python async PTY-WebSocket bridge server (default port: `8080`). |
 | **Restart Web Server** | [`./restart [PORT]`](file:///data/data/com.termux/files/home/tome238-mobile/restart) | Gracefully terminates existing servers, restarts daemon in background, and verifies HTTP 200 OK. |
-| **Run All Tests** | [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) | Runs full 6-stage test suite: Native CLI smoke test, Character creation birth test, Web integration test, Decoupled portability test, Crash pipeline test, and In-game Ctrl+S save test. |
+| **Run All Tests** | [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) | Runs full 7-stage test suite: Native CLI smoke test, Character creation birth test, Web integration test, Decoupled portability test, Crash pipeline test, In-game Ctrl+S save test, and PRF/scores persistence test. |
 | **Engine Smoke Test** | [`./scripts/test.sh`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test.sh) | Headless PTY test ([`scripts/smoke_test.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/smoke_test.py)) validating `--help`, module loading, and clean exit. |
 | **Birth Regression Test**| [`python3 scripts/test_birth.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_birth.py) | Headless PTY test validating character creation flow (default 'PLAYER' + Adventurer, and custom 'Hero' + Warrior) entering dungeon without Bionic abort. |
 | **Web Integration Test** | `python3 scripts/test_web.py` | Automated test suite validating HTTP endpoints, WebSocket handshake, PTY spawning, output streaming, and keystroke echo. |
 | **Portability Test**     | `python3 scripts/test_portability.py` | Proves generic terminal shell decoupling using standalone C demo without ToME dependencies. |
 | **Crash Pipeline Test**  | `python3 scripts/test_crash_pipeline.py` | Asserts PTY abnormal exit detection, 4KB stderr capture, and structured WebSocket `crash` event dispatch. |
 | **Ctrl+S Save Test**     | [`python3 scripts/test_ctrl_s.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_ctrl_s.py) | Headless PTY test validating in-game Ctrl+S save flow, disk persistence, and termios IXON/XOFF flow control bypass. |
+| **PRF & Persistence Test** | [`python3 scripts/test_persistence.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_persistence.py) | Headless test validating PRF user preference macros and binary Hall of Fame (`scores.raw`) symlink persistence across sessions. |
 | **TomeNET Account Manager** | [`python3 scripts/tomenet_acc.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/tomenet_acc.py) | CLI utility to inspect accounts (`--list`), auto-validate trial accounts (`--validate`), grant admin privileges (`--admin`), or watch accounts in real-time (`--watch`). |
 | **Run TomeNET C/S Web** | `./run_web 8080 profiles/tomenet.json` | Launches web terminal using TomeNET C/S profile with companion background server daemon (`tomenet.server`). |
 
@@ -38,7 +39,7 @@ tome238-mobile/
 ├── run                     # Convenience shim -> scripts/run.sh
 ├── run_web                 # Convenience shim -> scripts/run_web.sh
 ├── restart                 # Daemon manager & restart script
-├── test                    # Master test runner (executes all 6 test suites sequentially)
+├── test                    # Master test runner (executes all 7 test suites sequentially)
 ├── profiles/               # Declarative game and application profiles (JSON)
 │   ├── tome238.json        # Official ToME 2.3.8-ah single-player profile
 │   ├── portability_demo.json # Standalone C portability proof profile
@@ -62,10 +63,12 @@ tome238-mobile/
 │   │   ├── lua/            # Bundled Lua 4.0.1 engine & tolua code generator
 │   │   └── defines.h       # Engine constants, flags, and element IDs (GF_*)
 │   ├── lib/                # Runtime game assets (modules, scripts, edit files)
+│   │   ├── apex/           # High score records (scores.raw -> ../../../saves/scores.raw)
 │   │   ├── edit/           # Base text databases (p_info.txt, s_info.txt, etc.)
 │   │   ├── scpt/           # Engine Lua scripts (mkeys.lua, help.lua, etc.)
 │   │   ├── mods/           # Game modules (Theme, Fury)
-│   │   └── save/           # Symlink -> ../../saves
+│   │   ├── save/           # Symlink -> ../../saves
+│   │   └── user/           # Symlink -> ../../saves/user
 │   └── tome                # Compiled ARM64 native ELF binary
 ├── web/                    # Mobile web front-end & transport daemon
 │   ├── index.html          # Mobile web single-page interface
@@ -73,7 +76,9 @@ tome238-mobile/
 │   ├── app.js              # Xterm.js controller, touch event handler & context sniffer
 │   ├── server.py           # Asyncio PTY <-> WebSocket server + HTTP static server
 │   └── vendor/             # Bundled offline xterm.js (4.19.0) and fit addon
-├── saves/                  # Persistent player savefiles (separated from source tree)
+├── saves/                  # Persistent player data (savefiles, scores.raw, user/ macros & options)
+│   ├── scores.raw          # Hall of Fame high scores binary records (symlinked from lib/apex)
+│   └── user/               # User PRF keymaps, options & automator rules (symlinked from lib/user)
 └── scripts/                # Automation and validation scripts
     ├── build.sh            # Engine build script
     ├── run.sh              # Local curses launcher
@@ -84,6 +89,7 @@ tome238-mobile/
     ├── test_portability.py # Decoupled shell portability test
     ├── test_crash_pipeline.py # Crash detection and diagnostic pipeline test
     ├── test_ctrl_s.py      # In-game Ctrl+S save and flow control regression test
+    ├── test_persistence.py # PRF (macros/options) & scores.raw persistence regression test
     └── tomenet_acc.py      # 336-byte binary account parser, auto-validator & admin CLI
 ```
 
@@ -155,7 +161,9 @@ External reference repositories are cloned at `/data/data/com.termux/files/home/
 - **In-Game Ctrl+S Save Freeze Resolution (Termios IXON/XOFF Bypass)**: Resolved terminal freeze when saving in-game (`Ctrl+S` / `\x13`) by clearing `IXON` and `IXOFF` on the PTY slave in [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py) and flushing curses buffers in [`game/src/main-gcu.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c). Covered by automated regression test [`scripts/test_ctrl_s.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_ctrl_s.py).
 - **Floating Action Buttons, Ribbon Customizer, F-Key Palette & Esc Keycap**: Implemented draggable floating action buttons layer (`#floating-buttons-layer`, `localStorage: tome_floating_buttons`, 6px drag threshold, long-press editor), customizable action ribbon (`#btn-ribbon-add`, `localStorage: tome_custom_ribbon`, quick reset action), universal polymorphic button and macro editor (`#keymap-modal`, 2×6 F1~F12 grid, `{F1}`~`{F12}` token parser, special escape tokens, macro chips), and AdvKeyboard Row 4 keycap replacement (`↺` Redo -> `⎋` Esc with automatic Shift/pagination reset).
 - **Floating Button Manager, Presets System, Keyboard Toggle & Simple 3-Row Keyboard**: Implemented floating buttons manager dialog (`#manage-fb-modal`, item list, live coordinate inspection, edit/delete, 1-tap batch purge), layout & macro presets engine (`#presets-modal`, 3 built-in profiles: Default, Minimal Touch, Compact 3-Row, custom preset creation/storage under `tome_presets`), top-bar single-tap keyboard visibility toggle (`#btn-toggle-keyboard` with `.active-toggled` amber indicator and 100% viewport expansion), and 3-row compact simple keyboard (`simple_portrait`, `simple_landscape`, 22vh compact height, top-bar `#btn-switch-kbd-style` switcher).
-- **Unified 6-Stage Test Suite**: Integrated all test suites into master runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) (CLI Smoke -> Birth Flow -> Web Integration -> Shell Portability -> Crash Pipeline -> Ctrl+S Save).
+- **PRF (Macro/Options) & Hall of Fame (`scores.raw`) Persistence via Symlink Isolation**: Neutralized git-tracked 0-byte collision by isolating `scores.raw` (`game/lib/apex/scores.raw -> ../../../saves/scores.raw`) and user preferences (`game/lib/user -> ../../saves/user`). Hardened `fd_make()` in [`game/src/util.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/util.c) against `EEXIST` symlink failure, and ensured startup directory/file initialization in [`web/server.py`](file:///data/data/com.termux/files/home/tome238-mobile/web/server.py). Covered by automated regression test [`scripts/test_persistence.py`](file:///data/data/com.termux/files/home/tome238-mobile/scripts/test_persistence.py).
+- **Terminal Left-Edge Clipping Fix**: Calibrated `charAspect` (0.58 -> 0.61) and safety margins in [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js) with 4px lateral padding in [`web/style.css`](file:///data/data/com.termux/files/home/tome238-mobile/web/style.css), eliminating font glyph clipping on high-DPI mobile screens without horizontal scroll.
+- **Unified 7-Stage Test Suite**: Integrated all test suites into master runner [`./test`](file:///data/data/com.termux/files/home/tome238-mobile/test) (CLI Smoke -> Birth Flow -> Web Integration -> Shell Portability -> Crash Pipeline -> Ctrl+S Save -> PRF/Scores Persistence).
 
 ### Phase 5: TomeNET Real-Time Client-Server Integration & Companion Server Daemon (Active)
 - **TomeNET Real-Time C/S Profile (`profiles/tomenet.json`)**: Configured dedicated profile launching the interactive CUI client (`tomenet -c -i -p18348 -q 127.0.0.1`) under PTY supervision with `companion` daemon configuration (`tomenet.server`, port 18348).
