@@ -83,6 +83,14 @@ class PtySession:
         self.master_fd, slave_fd = pty.openpty()
         self._set_winsize(self.cols, self.rows, slave_fd)
 
+        # Disable software flow control (IXON/IXOFF) so Ctrl+S does not freeze terminal
+        try:
+            attrs = termios.tcgetattr(slave_fd)
+            attrs[0] &= ~(termios.IXON | termios.IXOFF)
+            termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
+        except OSError:
+            pass
+
         pid = os.fork()
         if pid == 0:
             # Child process

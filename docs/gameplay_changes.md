@@ -286,6 +286,29 @@ In classic roguelikes like ToME 2.3.8-ah, the dungeon map, sidebar stat panels, 
 5. **Top Bar Redraw Quick Action Button (`⟳`)**:
    - Added a dedicated 1-tap screen redraw button (`#btn-redraw`) in [`web/index.html`](file:///data/data/com.termux/files/home/tome238-mobile/web/index.html) and [`web/app.js`](file:///data/data/com.termux/files/home/tome238-mobile/web/app.js), allowing players to manually force a full terminal re-render at any time.
 
+### 4.4 In-Game Ctrl+S Save Freeze / Crash Fix (POSIX Termios `IXON`/`IXOFF` Flow Control Bypass)
+
+#### Root Cause Analysis
+In classic roguelikes, `Ctrl+S` (`\x13`, `KTRL('S')`) is the standard in-game command to save the current character without exiting (`dungeon.c:4477`). However, in standard POSIX terminal and PTY drivers:
+1. `IXON` (software flow control) is enabled by default in `c_iflag`.
+2. When the player pressed `Ctrl+S` (`\x13`), the POSIX TTY/PTY driver intercepted `0x13` as `XOFF` (`VSTOP`), suspending all subsequent character transmission from the game process.
+3. The legacy C curses driver ([`game/src/main-gcu.c`](file:///data/data/com.termux/files/home/tome238-mobile/game/src/main-gcu.c)) had an explicit comment `/* Hack -- Leave "VSTART/VSTOP" alone */` and never cleared `IXON`/`IXOFF` in `game_termios.c_iflag`.
+4. As a result, the terminal completely froze upon pressing `Ctrl+S`: stdout was paused in the kernel buffer, the `Saving game... done.` prompt was never rendered, and the terminal appeared dead until an `XON` character (`Ctrl+Q`, `\x11`) was received.
+
+#### Technical Resolution Across PTY Host and Engine
+1. **Engine GCU Driver (`game/src/main-gcu.c`)**:
+   - In `keymap_game_prepare()` (both `USE_TPOSIX` and `USE_TERMIO` code paths), explicitly disable software flow control:
+     ```c
+     game_termios.c_iflag &= ~(IXON | IXOFF);
+     game_termios.c_cc[VSTART] = (char) - 1;
+     game_termios.c_cc[VSTOP] = (char) - 1;
+     ```
+   - This ensures `\x13` and `\x11` pass cleanly through to the engine without halting output or triggering TTY driver intercept.
+2. **PTY Server Wrapper (`web/server.py`)**:
+   - In `PtySession.start()`, right after `pty.openpty()`, explicitly clear `termios.IXON` and `termios.IXOFF` on `slave_fd` before process execution.
+3. **Automated Regression Test (`scripts/test_ctrl_s.py`)**:
+   - Added automated headless PTY test that completes character creation into Bree, sends `\x13` (`Ctrl+S`), verifies `Saving game... done.`, checks that the savefile is written into `saves/`, and validates terminal responsiveness with subsequent commands. Integrated into `./test` as test `[6/6]`.
+
 ---
 
 ## 5. Cross-Reference Documentation

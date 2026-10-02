@@ -356,13 +356,18 @@ static void keymap_game_prepare(void)
 	/* Acquire the current mapping */
 	tcgetattr(0, &game_termios);
 
+	/* Disable software flow control so Ctrl+S and Ctrl+Q pass through to the game */
+	game_termios.c_iflag &= ~(IXON | IXOFF);
+
 	/* Force "Ctrl-C" to interupt */
 	game_termios.c_cc[VINTR] = (char)3;
 
 	/* Force "Ctrl-Z" to suspend */
 	game_termios.c_cc[VSUSP] = (char)26;
 
-	/* Hack -- Leave "VSTART/VSTOP" alone */
+	/* Disable start/stop characters to allow in-game Ctrl+S saving */
+	game_termios.c_cc[VSTART] = (char) - 1;
+	game_termios.c_cc[VSTOP] = (char) - 1;
 
 	/* Disable the standard control characters */
 	game_termios.c_cc[VQUIT] = (char) - 1;
@@ -382,13 +387,18 @@ static void keymap_game_prepare(void)
 	/* Acquire the current mapping */
 	(void)ioctl(0, TCGETA, (char *)&game_termio);
 
+	/* Disable software flow control so Ctrl+S and Ctrl+Q pass through to the game */
+	game_termio.c_iflag &= ~(IXON | IXOFF);
+
 	/* Force "Ctrl-C" to interupt */
 	game_termio.c_cc[VINTR] = (char)3;
 
 	/* Force "Ctrl-Z" to suspend */
 	game_termio.c_cc[VSUSP] = (char)26;
 
-	/* Hack -- Leave "VSTART/VSTOP" alone */
+	/* Disable start/stop characters to allow in-game Ctrl+S saving */
+	game_termio.c_cc[VSTART] = (char) - 1;
+	game_termio.c_cc[VSTOP] = (char) - 1;
 
 	/* Disable the standard control characters */
 	game_termio.c_cc[VQUIT] = (char) - 1;
